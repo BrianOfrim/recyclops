@@ -1,4 +1,9 @@
+import os
+import os.path
+import logging
 import boto3
+import botocore
+from botocore.exceptions import ClientError
 
 raw_bucket = 'recyclops'
 clean_bucket = 'recyclops-clean'
@@ -6,13 +11,7 @@ clean_bucket = 'recyclops-clean'
 dir_list = ['recycle', 'garbage']
 files_to_validate = []
 
-
 file_type = '.jpg'
-
-import logging
-import boto3
-from botocore.exceptions import ClientError
-
 
 def bucket_exists(bucket_name):
     """Determine whether bucket_name exists and the user has permission to access it
@@ -41,6 +40,19 @@ def get_files_from_dir(bucket_name, dir_name, file_extension):
             valid_files.append(object_summary)
     return valid_files    
 
+
+def download_files(object_summary_list):
+    
+    s3 = boto3.client('s3')
+    for object_index, object_summary in enumerate(object_summary_list):
+        if(not os.path.isfile(object_summary.key)):
+            try:
+                s3.download_file(object_summary.bucket_name, object_summary.key, object_summary.key)
+            except botocore.exceptions.ClientError as e:
+                logging.error(e)
+        logging.info('Downloading file from %s:%s, %i/%i' % \
+            (object_summary.bucket_name, object_summary.key, object_index, len(object_summary_list)))
+
 def main():
 
     # Set up logging
@@ -63,6 +75,17 @@ def main():
                      f'you do not have permission to access it.')
         return
 
+    # create the output dirctories
+    for catagory_dir in dir_list:
+        if(not os.path.isdir(catagory_dir) or not os.path.exists(catagory_dir)):
+            print('Creating output directory: %s' % catagory_dir)
+            try:
+                os.mkdir(catagory_dir)
+            except OSError:
+                print ("Creation of the directory %s failed" % catagory_dir)
+                return
+            else:
+                print ("Successfully created the directory %s " % catagory_dir)
 
     for catagory_index, catagory_dir in enumerate(dir_list):
         raw_files = get_files_from_dir(raw_bucket, catagory_dir, file_type)
@@ -70,7 +93,7 @@ def main():
         files_to_validate.append([rf for rf in raw_files if not any(cf.key == rf.key for cf in clean_files)])
 
         logging.info('There are %i items to validate for type %s' % (len(files_to_validate[catagory_index]), catagory_dir))
-        
+        download_files(files_to_validate[catagory_index])
 
 
 
