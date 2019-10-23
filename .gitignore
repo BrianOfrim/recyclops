@@ -1,4 +1,4 @@
-./*/recycle/*
-./*/garbage/*
-./*/recycle/
-./*/garbage/
+./dataCleaning/recycle/
+./dataCleaning/garbage/
+./dataGathering/recycle/
+./dataGathering/garbage/
