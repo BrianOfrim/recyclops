@@ -1,17 +1,23 @@
 import os
 import os.path
 import logging
+import numpy as np
+import cv2
 import boto3
 import botocore
 from botocore.exceptions import ClientError
 
+
+WINDOW_NAME = "Recyclops"
 raw_bucket = 'recyclops'
 clean_bucket = 'recyclops-clean'
-
 dir_list = ['recycle', 'garbage']
 files_to_validate = []
-
 file_type = '.jpg'
+FONT_TYPE = cv2.FONT_HERSHEY_SIMPLEX
+FONT_COLOR_DISPLAY = (255, 0, 0)
+FONT_COLOR_VALID = (0, 255, 0)
+FONT_COLOR_INVALID = (0, 0, 255)
 
 def bucket_exists(bucket_name):
     """Determine whether bucket_name exists and the user has permission to access it
@@ -75,7 +81,7 @@ def main():
                      f'you do not have permission to access it.')
         return
 
-    # create the output dirctories
+    # Create the output dirctories
     for catagory_dir in dir_list:
         if(not os.path.isdir(catagory_dir) or not os.path.exists(catagory_dir)):
             print('Creating output directory: %s' % catagory_dir)
@@ -87,6 +93,7 @@ def main():
             else:
                 print ("Successfully created the directory %s " % catagory_dir)
 
+    # Fetch the images
     for catagory_index, catagory_dir in enumerate(dir_list):
         raw_files = get_files_from_dir(raw_bucket, catagory_dir, file_type)
         clean_files = get_files_from_dir(clean_bucket, catagory_dir, file_type)
@@ -95,7 +102,50 @@ def main():
         logging.info('There are %i items to validate for type %s' % (len(files_to_validate[catagory_index]), catagory_dir))
         download_files(files_to_validate[catagory_index])
 
+    cv2.namedWindow(WINDOW_NAME)
+    cv2.moveWindow(WINDOW_NAME, 0, 0)
 
+    # Show the data to the user
+    for catagory_index, catagory_dir in enumerate(dir_list):
+        file_index = 0
+        while file_index < len(files_to_validate[catagory_index]):
+            logging.info("Catagory: %s Image: %i/%i  Filename: %s " % \
+                    (catagory_dir, file_index, len(files_to_validate[catagory_index]),\
+                    files_to_validate[catagory_index][file_index]))
+            current_image = cv2.imread(files_to_validate[catagory_index][file_index].key)
+            
+            display_image = cv2.putText(current_image, catagory_dir, (0,70), FONT_TYPE, 3, FONT_COLOR_DISPLAY, 3, cv2.LINE_AA)
+
+            cv2.imshow(WINDOW_NAME, display_image)
+            cv2.waitKey(1)
+
+            # Get the user input
+            user_input = input("Is picture valid?: a=no d=yes w=previous:")
+            if(user_input == 'd'):
+                # image is valid
+                print("Valid!")
+                display_image = cv2.putText(current_image, catagory_dir + " valid" , (0,70), FONT_TYPE, 3, FONT_COLOR_VALID, 3, cv2.LINE_AA)
+                cv2.imshow(WINDOW_NAME, display_image)
+                cv2.waitKey(500)
+                file_index += 1
+            elif(user_input == 'a'):
+                #image is invalid
+                print("Invalid...")
+                display_image = cv2.putText(current_image, catagory_dir + " invalid", (0,70), FONT_TYPE, 3, FONT_COLOR_INVALID, 3, cv2.LINE_AA)
+                cv2.imshow(WINDOW_NAME, display_image)
+                cv2.waitKey(500)
+                file_index += 1 
+            elif(user_input == 'w'):
+                # return to previous
+                if(file_index > 0):
+                    print("Previous.")
+                    file_index -= 1
+                else:
+                    print("Already at the start")
+            else:
+                #invalid input
+                print("Invalid input, please try again")
+    cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     main()
