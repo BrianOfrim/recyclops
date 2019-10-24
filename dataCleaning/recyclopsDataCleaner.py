@@ -13,7 +13,6 @@ WINDOW_NAME = "Recyclops"
 raw_bucket = 'recyclops'
 clean_bucket = 'recyclops-clean'
 dir_list = ['recycle', 'garbage']
-files_to_validate = []
 file_type = '.jpg'
 FONT_TYPE = cv2.FONT_HERSHEY_SIMPLEX
 FONT_COLOR_DISPLAY = (255, 0, 0)
@@ -53,6 +52,30 @@ def get_files_from_dir(bucket_name, dir_name, file_extension):
             valid_files.append(object_summary)
     return valid_files    
 
+def upload_file(file_name, bucket, object_name=None):
+
+    global s3_client_upload
+    """Upload a file to an S3 bucket
+
+    :param file_name: File to upload
+    :param bucket: Bucket to upload to
+    :param object_name: S3 object name. If not specified then file_name is used
+    :return: True if file was uploaded, else False
+    """
+
+    # If S3 object_name was not specified, use file_name
+    if object_name is None:
+        object_name = file_name
+
+    if s3_client_upload == None:
+        s3_client_upload = boto3.client('s3')
+    try:
+        s3_client_upload.upload_file(file_name, bucket, object_name)
+        print('\n')
+    except ClientError as e:
+        logging.error(e)
+        return False
+    return True
 
 def download_files(object_summary_list):
     
@@ -102,6 +125,9 @@ def main():
             else:
                 print ("Successfully created the directory %s " % catagory_dir)
 
+
+    files_to_validate = []
+
     # Fetch the images
     for catagory_index, catagory_dir in enumerate(dir_list):
         raw_files = get_files_from_dir(raw_bucket, catagory_dir, file_type)
@@ -113,6 +139,12 @@ def main():
 
     cv2.namedWindow(WINDOW_NAME)
     cv2.moveWindow(WINDOW_NAME, 0, 0)
+    
+    
+    
+    valid_files = {}
+    invalid_files = {}
+    continue_display = True
 
     # Show the data to the user
     for catagory_index, catagory_dir in enumerate(dir_list):
@@ -131,17 +163,20 @@ def main():
             if(keypress & 0xFF == ord('d')):
                 # image is valid
                 print("Valid!")
-                display_image = cv2.putText(current_image, catagory_dir + " valid" , (0,70), FONT_TYPE, 3, FONT_COLOR_VALID, 3, cv2.LINE_AA)
+                display_image = cv2.putText(current_image, catagory_dir + " valid" \
+                    , (0,70), FONT_TYPE, 3, FONT_COLOR_VALID, 3, cv2.LINE_AA)
                 cv2.imshow(WINDOW_NAME, display_image)
-                cv2.waitKey(500)
-                files_to_validate[catagory_index][file_index].valid = True
+                cv2.waitKey(300)
+                files_to_validate[catagory_index][file_index]
+                print(files_to_validate[catagory_index][file_index])
                 file_index += 1
             elif(keypress & 0xFF == ord('a')):
                 #image is invalid
                 print("Invalid...")
-                display_image = cv2.putText(current_image, catagory_dir + " invalid", (0,70), FONT_TYPE, 3, FONT_COLOR_INVALID, 3, cv2.LINE_AA)
+                display_image = cv2.putText(current_image, catagory_dir + " invalid" \
+                    , (0,70), FONT_TYPE, 3, FONT_COLOR_INVALID, 3, cv2.LINE_AA)
                 cv2.imshow(WINDOW_NAME, display_image)
-                cv2.waitKey(500)
+                cv2.waitKey(300)
                 files_to_validate[catagory_index][file_index].valid = False
                 file_index += 1 
             elif(keypress & 0xFF == ord('w')):
@@ -151,10 +186,32 @@ def main():
                     file_index -= 1
                 else:
                     print("Already at the start")
+            elif(keypress & 0xFF == ord('p')):
+                # exit
+                continue_display = False
+                print("Exit cleaning...")
+                break
             else:
                 #invalid input
                 print("Invalid input, please try again")
+        
+        print("Continue display %r" % continue_display)
+        if(continue_display == False):
+            break
+
     cv2.destroyAllWindows()
+
+    file_count = 0
+
+    # Count files to upload
+#    for catagory_index, catagory_dir in enumerate(dir_list):
+#        file_count += sum(f.valid for f in files_to_validate[catagory_index])
+
+    # Upload clean 
+    for catagory_index, catagory_dir in enumerate(dir_list):
+        for file_index, file_summary in enumerate(files_to_validate[catagory_index]):        
+        #    if(files_to_validate[catagory_index][file_index].valid):
+            print(files_to_validate[catagory_index][file_index])                
 
 if __name__ == '__main__':
     main()
