@@ -6,7 +6,8 @@ import cv2
 import boto3
 import botocore
 from botocore.exceptions import ClientError
-
+from sys import exit
+from signal import signal, SIGINT
 
 WINDOW_NAME = "Recyclops"
 raw_bucket = 'recyclops'
@@ -18,6 +19,12 @@ FONT_TYPE = cv2.FONT_HERSHEY_SIMPLEX
 FONT_COLOR_DISPLAY = (255, 0, 0)
 FONT_COLOR_VALID = (0, 255, 0)
 FONT_COLOR_INVALID = (0, 0, 255)
+
+
+def exit_handler(signal_received, frame):
+    print("Forced exit...")
+    cv2.destroyAllWindows()
+    exit(0)
 
 def bucket_exists(bucket_name):
     """Determine whether bucket_name exists and the user has permission to access it
@@ -60,6 +67,8 @@ def download_files(object_summary_list):
             (object_summary.bucket_name, object_summary.key, object_index, len(object_summary_list)))
 
 def main():
+
+    signal(SIGINT, exit_handler)
 
     # Set up logging
     logging.basicConfig(level=logging.INFO,
@@ -117,25 +126,25 @@ def main():
             display_image = cv2.putText(current_image, catagory_dir, (0,70), FONT_TYPE, 3, FONT_COLOR_DISPLAY, 3, cv2.LINE_AA)
 
             cv2.imshow(WINDOW_NAME, display_image)
-            cv2.waitKey(1)
-
+            keypress = cv2.waitKey(0)
             # Get the user input
-            user_input = input("Is picture valid?: a=no d=yes w=previous:")
-            if(user_input == 'd'):
+            if(keypress & 0xFF == ord('d')):
                 # image is valid
                 print("Valid!")
                 display_image = cv2.putText(current_image, catagory_dir + " valid" , (0,70), FONT_TYPE, 3, FONT_COLOR_VALID, 3, cv2.LINE_AA)
                 cv2.imshow(WINDOW_NAME, display_image)
                 cv2.waitKey(500)
+                files_to_validate[catagory_index][file_index].valid = True
                 file_index += 1
-            elif(user_input == 'a'):
+            elif(keypress & 0xFF == ord('a')):
                 #image is invalid
                 print("Invalid...")
                 display_image = cv2.putText(current_image, catagory_dir + " invalid", (0,70), FONT_TYPE, 3, FONT_COLOR_INVALID, 3, cv2.LINE_AA)
                 cv2.imshow(WINDOW_NAME, display_image)
                 cv2.waitKey(500)
+                files_to_validate[catagory_index][file_index].valid = False
                 file_index += 1 
-            elif(user_input == 'w'):
+            elif(keypress & 0xFF == ord('w')):
                 # return to previous
                 if(file_index > 0):
                     print("Previous.")
