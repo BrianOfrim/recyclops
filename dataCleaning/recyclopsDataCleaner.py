@@ -45,40 +45,24 @@ def get_files_from_dir(bucket_name, dir_name, file_extension):
     s3 = boto3.resource('s3')
     my_bucket = s3.Bucket(bucket_name)
 
-    valid_files = []
+    files_from_dir = []
     
     for object_summary in my_bucket.objects.filter(Prefix=dir_name + '/'):
         if(object_summary.key.endswith(file_extension)):
-            valid_files.append(object_summary)
-    return valid_files    
+            files_from_dir.append(object_summary)
+    return files_from_dir 
 
-def upload_file(file_name, bucket, object_name=None):
-
-    global s3_client_upload
-    """Upload a file to an S3 bucket
-
-    :param file_name: File to upload
-    :param bucket: Bucket to upload to
-    :param object_name: S3 object name. If not specified then file_name is used
-    :return: True if file was uploaded, else False
-    """
-
-    # If S3 object_name was not specified, use file_name
-    if object_name is None:
-        object_name = file_name
-
-    if s3_client_upload == None:
-        s3_client_upload = boto3.client('s3')
-    try:
-        s3_client_upload.upload_file(file_name, bucket, object_name)
-        print('\n')
-    except ClientError as e:
-        logging.error(e)
-        return False
-    return True
+def upload_files(bucket, files_to_send):
+    s3 = boto3.client('s3')
+    for file_index, file_to_send in enumerate(files_to_send):
+        try:
+            s3.upload_file(file_to_send, bucket, file_to_send)
+        except ClientError as e:
+            logging.error(e)
+        logging.info("Uploading file to %s:%s, %i/%i" % \
+            (bucket, file_to_send, file_index + 1, len(files_to_send)))
 
 def download_files(object_summary_list):
-    
     s3 = boto3.client('s3')
     for object_index, object_summary in enumerate(object_summary_list):
         if(not os.path.isfile(object_summary.key)):
@@ -142,8 +126,8 @@ def main():
     
     
     
-    valid_files = {}
-    invalid_files = {}
+    valid_files = set()
+    invalid_files = set()
     continue_display = True
 
     # Show the data to the user
@@ -167,8 +151,9 @@ def main():
                     , (0,70), FONT_TYPE, 3, FONT_COLOR_VALID, 3, cv2.LINE_AA)
                 cv2.imshow(WINDOW_NAME, display_image)
                 cv2.waitKey(300)
-                files_to_validate[catagory_index][file_index]
                 print(files_to_validate[catagory_index][file_index])
+                valid_files.add(files_to_validate[catagory_index][file_index].key)
+                invalid_files.discard(files_to_validate[catagory_index][file_index].key)
                 file_index += 1
             elif(keypress & 0xFF == ord('a')):
                 #image is invalid
@@ -177,7 +162,9 @@ def main():
                     , (0,70), FONT_TYPE, 3, FONT_COLOR_INVALID, 3, cv2.LINE_AA)
                 cv2.imshow(WINDOW_NAME, display_image)
                 cv2.waitKey(300)
-                files_to_validate[catagory_index][file_index].valid = False
+                print(files_to_validate[catagory_index][file_index])
+                invalid_files.add(files_to_validate[catagory_index][file_index].key)
+                valid_files.discard(files_to_validate[catagory_index][file_index].key)
                 file_index += 1 
             elif(keypress & 0xFF == ord('w')):
                 # return to previous
@@ -186,6 +173,13 @@ def main():
                     file_index -= 1
                 else:
                     print("Already at the start")
+
+            elif(keypress & 0xFF == ord('s')):
+                #skip
+                print("Skip")
+                invalid_files.discard(files_to_validate[catagory_index][file_index].key)
+                valid_files.discard(files_to_validate[catagory_index][file_index].key)
+                file_index += 1
             elif(keypress & 0xFF == ord('p')):
                 # exit
                 continue_display = False
@@ -195,23 +189,21 @@ def main():
                 #invalid input
                 print("Invalid input, please try again")
         
-        print("Continue display %r" % continue_display)
         if(continue_display == False):
             break
 
     cv2.destroyAllWindows()
 
-    file_count = 0
 
-    # Count files to upload
-#    for catagory_index, catagory_dir in enumerate(dir_list):
-#        file_count += sum(f.valid for f in files_to_validate[catagory_index])
+    print("\n\n Valid files:")
+    for valid_file in valid_files:
+        print(valid_file) 
 
-    # Upload clean 
-    for catagory_index, catagory_dir in enumerate(dir_list):
-        for file_index, file_summary in enumerate(files_to_validate[catagory_index]):        
-        #    if(files_to_validate[catagory_index][file_index].valid):
-            print(files_to_validate[catagory_index][file_index])                
+    print("\n\n Invalid files:")
+    for invalid_file in invalid_files:
+        print(invalid_file)
 
+    upload_files(clean_bucket, valid_files)
+    
 if __name__ == '__main__':
     main()
