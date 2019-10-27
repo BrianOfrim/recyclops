@@ -1,6 +1,7 @@
 import os
 import os.path
 import logging
+import time
 import numpy as np
 import cv2
 import boto3
@@ -88,7 +89,28 @@ def get_current_verification_list(bucket_name, verified_list_dir, verification_t
         return f.readlines()
     return None
     
-#def upload_verification_file() 
+def upload_verification_file(bucket_name, verification_dir ,catagory, verification_type, image_file_names):
+    # create a file containing the verified files
+    verification_file_name = '%s/%s/%s/%i-%s.txt' % \
+        (verification_dir, catagory, verification_type, time.time(), catagory)
+    with open(verification_file_name, 'w') as f:
+        for item in my_list:
+            f.write("%s\n" % item) 
+    upload_files(bucket_name, [verification_file_name])
+
+
+def create_output_dir(dir_name):
+    if(not os.path.isdir(dir_name) or not os.path.exists(dir_name)):
+        print('Creating output directory: %s' % dir_name)
+        try:
+            os.mkdir(dir_name)
+        except OSError:
+            print ("Creation of the directory %s failed" % dir_name)
+            return
+        else:
+            print ("Successfully created the directory %s " % dir_name)
+
+
 
 def main():
 
@@ -125,16 +147,7 @@ def main():
 #
     # Create the output dirctories
     for catagory_dir in catagory_dir_list:
-        if(not os.path.isdir(catagory_dir) or not os.path.exists(catagory_dir)):
-            print('Creating output directory: %s' % catagory_dir)
-            try:
-                os.mkdir(catagory_dir)
-            except OSError:
-                print ("Creation of the directory %s failed" % catagory_dir)
-                return
-            else:
-                print ("Successfully created the directory %s " % catagory_dir)
-
+        
 
     files_to_validate = dict((c, []) for c in catagory_dir_list)
 
@@ -221,6 +234,12 @@ def main():
 
     print("Resulst")
     print(current_verification_lists)
+
+
+    for catagory_dir in catagory_dir_list:
+        for verification_type in verification_types:
+            upload_verification_file(raw_bucket, clean_dir, catagory_dir, verification_type,\
+                 current_verification_lists[catagory_dir][verification_type])
 
 #    upload_files(clean_bucket, valid_files)
     
