@@ -11,8 +11,9 @@ from signal import signal, SIGINT
 
 WINDOW_NAME = "Recyclops"
 raw_bucket = 'recyclops'
-clean_bucket = 'recyclops-clean'
-dir_list = ['recycle', 'garbage']
+clean_dir = 'verified'
+verification_types = ['valid', 'invalid']
+catagory_dir_list = ['recycle', 'garbage']
 file_type = '.jpg'
 FONT_TYPE = cv2.FONT_HERSHEY_SIMPLEX
 FONT_COLOR_DISPLAY = (255, 0, 0)
@@ -52,6 +53,8 @@ def get_files_from_dir(bucket_name, dir_name, file_extension):
             files_from_dir.append(object_summary)
     return files_from_dir 
 
+   
+
 def upload_files(bucket, files_to_send):
     s3 = boto3.client('s3')
     for file_index, file_to_send in enumerate(files_to_send):
@@ -73,6 +76,20 @@ def download_files(object_summary_list):
         logging.info('Downloading file from %s:%s, %i/%i' % \
             (object_summary.bucket_name, object_summary.key, object_index, len(object_summary_list)))
 
+
+def get_current_verification_list(bucket_name, verified_list_dir, verification_type, catagory):
+    files_from_dir = get_files_from_dir(bucket_name, verified_list_dir + "/" + verification_type +"/" +  catagory, ".txt")
+    if len(files_from_dir) == 0: return None
+    #find the most recent (highest timestamp)
+    sorted_files = sorted(files_from_dir, key = lambda summary: int(filter(str.isdigit, summary.key)), reverse=True)
+    #download the most recent verification file
+    download_files([sorted_files[0]])
+    with open(sorted_files[0], "r") as f:
+        return f.readlines()
+    return None
+    
+#def upload_verification_file() 
+
 def main():
 
     signal(SIGINT, exit_handler)
@@ -89,16 +106,25 @@ def main():
                      f'you do not have permission to access it.')
         return
 
+    # Get the most recent verified file list
+    current_verification_lists = dict((c, dict((vt, set()) for vt in verification_types)) for c in catagory_dir_list)
+    for catagory_dir in catagory_dir_list:
+        for verification_type in verification_types:
+            verification_list = get_current_verification_list(raw_bucket, clean_dir, verification_type , catagory_dir)
+            if(verification_list):
+                current_verification_lists[catagory_dir][verification_type] = set(verification_list)
+        
+    print(current_verification_lists)
     # Check if the clean bucket exists
-    if bucket_exists(clean_bucket):
-        logging.info(f'{clean_bucket} exists and you have permission to access it.')
-    else:
-        logging.info(f'{clean_bucket} does not exist or '
-                     f'you do not have permission to access it.')
-        return
-
+#    if bucket_exists(clean_bucket):
+#        logging.info(f'{clean_bucket} exists and you have permission to access it.')
+#    else:
+#        logging.info(f'{clean_bucket} does not exist or '
+#                     f'you do not have permission to access it.')
+#        return
+#
     # Create the output dirctories
-    for catagory_dir in dir_list:
+    for catagory_dir in catagory_dir_list:
         if(not os.path.isdir(catagory_dir) or not os.path.exists(catagory_dir)):
             print('Creating output directory: %s' % catagory_dir)
             try:
@@ -110,34 +136,33 @@ def main():
                 print ("Successfully created the directory %s " % catagory_dir)
 
 
-    files_to_validate = []
+    files_to_validate = dict((c, []) for c in catagory_dir_list)
 
     # Fetch the images
-    for catagory_index, catagory_dir in enumerate(dir_list):
-        raw_files = get_files_from_dir(raw_bucket, catagory_dir, file_type)
-        clean_files = get_files_from_dir(clean_bucket, catagory_dir, file_type)
-        files_to_validate.append([rf for rf in raw_files if not any(cf.key == rf.key for cf in clean_files)])
+    for catagory_dir in catagory_dir_list:
+        raw_files = get_files_from_dir(raw_bucket, catagory_dir, file_type) 
+        clean_files = set()
+        for vt in verification_types:
+            clean_files.union(current_verification_lists[catagory_dir][vt])
+        
+        files_to_validate[catagory_dir].extend([rf for rf in raw_files if rf.key not in clean_files])
 
-        logging.info('There are %i items to validate for type %s' % (len(files_to_validate[catagory_index]), catagory_dir))
-        download_files(files_to_validate[catagory_index])
+        logging.info('There are %i items to validate for type %s' % (len(files_to_validate[catagory_dir]), catagory_dir))
+        download_files(list(files_to_validate[catagory_dir]))
 
     cv2.namedWindow(WINDOW_NAME)
     cv2.moveWindow(WINDOW_NAME, 0, 0)
     
-    
-    
-    valid_files = set()
-    invalid_files = set()
     continue_display = True
 
     # Show the data to the user
-    for catagory_index, catagory_dir in enumerate(dir_list):
+    for catagory_dir in catagory_dir_list:
         file_index = 0
-        while file_index < len(files_to_validate[catagory_index]):
+        while file_index < len(files_to_validate[catagory_dir]):
             logging.info("Catagory: %s Image: %i/%i  Filename: %s " % \
-                    (catagory_dir, file_index, len(files_to_validate[catagory_index]),\
-                    files_to_validate[catagory_index][file_index]))
-            current_image = cv2.imread(files_to_validate[catagory_index][file_index].key)
+                    (catagory_dir, file_index, len(files_to_validate[catagory_dir]),\
+                    files_to_validate[catagory_dir][file_index]))
+            current_image = cv2.imread(files_to_validate[catagory_dir][file_index].key)
             
             display_image = cv2.putText(current_image, catagory_dir, (0,70), FONT_TYPE, 3, FONT_COLOR_DISPLAY, 3, cv2.LINE_AA)
 
@@ -151,9 +176,9 @@ def main():
                     , (0,70), FONT_TYPE, 3, FONT_COLOR_VALID, 3, cv2.LINE_AA)
                 cv2.imshow(WINDOW_NAME, display_image)
                 cv2.waitKey(300)
-                print(files_to_validate[catagory_index][file_index])
-                valid_files.add(files_to_validate[catagory_index][file_index].key)
-                invalid_files.discard(files_to_validate[catagory_index][file_index].key)
+                print(files_to_validate[catagory_dir][file_index])
+                current_verification_lists[catagory_dir]['valid'].add(files_to_validate[catagory_dir][file_index].key)
+                current_verification_lists[catagory_dir]['invalid'].discard(files_to_validate[catagory_dir][file_index].key)
                 file_index += 1
             elif(keypress & 0xFF == ord('a')):
                 #image is invalid
@@ -162,9 +187,9 @@ def main():
                     , (0,70), FONT_TYPE, 3, FONT_COLOR_INVALID, 3, cv2.LINE_AA)
                 cv2.imshow(WINDOW_NAME, display_image)
                 cv2.waitKey(300)
-                print(files_to_validate[catagory_index][file_index])
-                invalid_files.add(files_to_validate[catagory_index][file_index].key)
-                valid_files.discard(files_to_validate[catagory_index][file_index].key)
+                print(files_to_validate[catagory_dir][file_index])
+                current_verification_lists[catagory_dir]['invalid'].add(files_to_validate[catagory_dir][file_index].key)
+                current_verification_lists[catagory_dir]['valid'].discard(files_to_validate[catagory_dir][file_index].key)
                 file_index += 1 
             elif(keypress & 0xFF == ord('w')):
                 # return to previous
@@ -177,8 +202,8 @@ def main():
             elif(keypress & 0xFF == ord('s')):
                 #skip
                 print("Skip")
-                invalid_files.discard(files_to_validate[catagory_index][file_index].key)
-                valid_files.discard(files_to_validate[catagory_index][file_index].key)
+                current_verification_lists[catagory_dir]['valid'].discard(files_to_validate[catagory_dir][file_index].key)
+                current_verification_lists[catagory_dir]['invalid'].discard(files_to_validate[catagory_dir][file_index].key)
                 file_index += 1
             elif(keypress & 0xFF == ord('p')):
                 # exit
@@ -194,16 +219,13 @@ def main():
 
     cv2.destroyAllWindows()
 
+    print("Resulst")
+    print(current_verification_lists)
 
-    print("\n\n Valid files:")
-    for valid_file in valid_files:
-        print(valid_file) 
+#    upload_files(clean_bucket, valid_files)
+    
+    
 
-    print("\n\n Invalid files:")
-    for invalid_file in invalid_files:
-        print(invalid_file)
-
-    upload_files(clean_bucket, valid_files)
     
 if __name__ == '__main__':
     main()
