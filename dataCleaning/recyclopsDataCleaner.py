@@ -128,14 +128,7 @@ def main():
                      f'you do not have permission to access it.')
         return
 
-    # Get the most recent verified file list
-    current_verification_lists = dict((c, dict((vt, set()) for vt in verification_types)) for c in catagory_dir_list)
-    for catagory_dir in catagory_dir_list:
-        for verification_type in verification_types:
-            verification_list = get_current_verification_list(raw_bucket, clean_dir, verification_type , catagory_dir)
-            if(verification_list):
-                current_verification_lists[catagory_dir][verification_type] = set(verification_list)
-        
+       
     # Create the output dirctories
     create_output_dir(clean_dir)
     for catagory_dir in catagory_dir_list:
@@ -143,6 +136,15 @@ def main():
         create_output_dir(clean_dir + '/' + catagory_dir)
         for vt in verification_types:
             create_output_dir(clean_dir + '/' + catagory_dir + '/' + vt)
+
+    # Get the most recent verified file list
+    current_verification_lists = dict((c, dict((vt, set()) for vt in verification_types)) for c in catagory_dir_list)
+    for catagory_dir in catagory_dir_list:
+        for verification_type in verification_types:
+            verification_list = get_current_verification_list(raw_bucket, clean_dir, verification_type , catagory_dir)
+            if(verification_list):
+                current_verification_lists[catagory_dir][verification_type] = set(verification_list)
+ 
 
     files_to_validate = dict((c, []) for c in catagory_dir_list)
 
