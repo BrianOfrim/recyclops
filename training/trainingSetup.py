@@ -8,6 +8,7 @@ from botocore.exceptions import ClientError
 
 raw_bucket = 'recyclops'
 clean_dir = 'verified'
+image_base_dir = "./images"
 catagory_dir_list = ['recycle', 'garbage']
 
 def create_output_dir(dir_name):
@@ -60,12 +61,12 @@ def get_current_verification_list(bucket_name, verified_list_dir, verification_t
         return [line.strip() for line in f if line.strip()] 
     return []
 
-def download_files(bucket_name, file_names):
+def download_files(bucket_name, file_names, base_dir = '.'):
     s3 = boto3.client('s3')
     for object_index, object_name in enumerate(file_names):
         if(not os.path.isfile(object_name)):
             try:
-                s3.download_file(bucket_name, object_name, object_name)
+                s3.download_file(bucket_name, object_name, base_dir + '/' + object_name)
             except botocore.exceptions.ClientError as e:
                 logging.error(e)
         logging.info('Downloading file from %s:%s, %i/%i' % \
@@ -86,8 +87,9 @@ def main():
 
     # Create the classification directories
     create_output_dir(clean_dir)
+    create_output_dir(image_base_dir)
     for catagory_dir in catagory_dir_list:
-        create_output_dir(catagory_dir)
+        create_output_dir(image_base_dir + '/' + catagory_dir)
         create_output_dir(clean_dir + '/' + catagory_dir)
         create_output_dir(clean_dir + '/' + catagory_dir + '/valid')
 
@@ -98,7 +100,7 @@ def main():
     
     # Fetch the images
     for catagory_dir in catagory_dir_list:
-        download_files(raw_bucket, verified_files[catagory_dir])
+        download_files(raw_bucket, verified_files[catagory_dir], image_base_dir)
 
 if __name__ == '__main__':
     main()
