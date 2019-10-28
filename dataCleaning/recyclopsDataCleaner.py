@@ -1,13 +1,14 @@
 import os
 import os.path
+from sys import exit
 import logging
 import time
+import re
 import numpy as np
 import cv2
 import boto3
 import botocore
 from botocore.exceptions import ClientError
-from sys import exit
 from signal import signal, SIGINT
 
 WINDOW_NAME = "Recyclops"
@@ -46,9 +47,8 @@ def get_files_from_dir(bucket_name, dir_name, file_extension):
 
     s3 = boto3.resource('s3')
     my_bucket = s3.Bucket(bucket_name)
-
     files_from_dir = []
-    
+
     for object_summary in my_bucket.objects.filter(Prefix=dir_name + '/'):
         if(object_summary.key.endswith(file_extension)):
             files_from_dir.append(object_summary)
@@ -75,27 +75,28 @@ def download_files(object_summary_list):
             except botocore.exceptions.ClientError as e:
                 logging.error(e)
         logging.info('Downloading file from %s:%s, %i/%i' % \
-            (object_summary.bucket_name, object_summary.key, object_index, len(object_summary_list)))
+            (object_summary.bucket_name, object_summary.key, object_index + 1, len(object_summary_list)))
 
 
 def get_current_verification_list(bucket_name, verified_list_dir, verification_type, catagory):
-    files_from_dir = get_files_from_dir(bucket_name, verified_list_dir + "/" + verification_type +"/" +  catagory, ".txt")
+    files_from_dir = get_files_from_dir(bucket_name, verified_list_dir + "/" + catagory +"/" +  verification_type, ".txt")
     if len(files_from_dir) == 0: return None
     #find the most recent (highest timestamp)
-    sorted_files = sorted(files_from_dir, key = lambda summary: int(filter(str.isdigit, summary.key)), reverse=True)
+    sorted_files = sorted(files_from_dir, key = lambda summary: int(re.findall('[0-9]+', summary.key)[0]), reverse=True)
     #download the most recent verification file
     download_files([sorted_files[0]])
-    with open(sorted_files[0], "r") as f:
-        return f.readlines()
+    with open(sorted_files[0].key, "r") as f:
+        return [line.strip() for line in f if line.strip()] 
     return None
     
 def upload_verification_file(bucket_name, verification_dir ,catagory, verification_type, image_file_names):
+    if(len(image_file_names) == 0): return        
     # create a file containing the verified files
-    verification_file_name = '%s/%s/%s/%i-%s.txt' % \
-        (verification_dir, catagory, verification_type, time.time(), catagory)
+    verification_file_name = '%s/%s/%s/%i-%s-%s.txt' % \
+        (verification_dir, catagory, verification_type, time.time(), catagory, verification_type)
     with open(verification_file_name, 'w') as f:
-        for item in my_list:
-            f.write("%s\n" % item) 
+        for fn in image_file_names:
+            f.write("%s\n" % fn) 
     upload_files(bucket_name, [verification_file_name])
 
 
@@ -109,7 +110,6 @@ def create_output_dir(dir_name):
             return
         else:
             print ("Successfully created the directory %s " % dir_name)
-
 
 
 def main():
@@ -136,18 +136,13 @@ def main():
             if(verification_list):
                 current_verification_lists[catagory_dir][verification_type] = set(verification_list)
         
-    print(current_verification_lists)
-    # Check if the clean bucket exists
-#    if bucket_exists(clean_bucket):
-#        logging.info(f'{clean_bucket} exists and you have permission to access it.')
-#    else:
-#        logging.info(f'{clean_bucket} does not exist or '
-#                     f'you do not have permission to access it.')
-#        return
-#
     # Create the output dirctories
+    create_output_dir(clean_dir)
     for catagory_dir in catagory_dir_list:
-        
+        create_output_dir(catagory_dir)        
+        create_output_dir(clean_dir + '/' + catagory_dir)
+        for vt in verification_types:
+            create_output_dir(clean_dir + '/' + catagory_dir + '/' + vt)
 
     files_to_validate = dict((c, []) for c in catagory_dir_list)
 
@@ -156,8 +151,7 @@ def main():
         raw_files = get_files_from_dir(raw_bucket, catagory_dir, file_type) 
         clean_files = set()
         for vt in verification_types:
-            clean_files.union(current_verification_lists[catagory_dir][vt])
-        
+            clean_files.update(current_verification_lists[catagory_dir][vt])
         files_to_validate[catagory_dir].extend([rf for rf in raw_files if rf.key not in clean_files])
 
         logging.info('There are %i items to validate for type %s' % (len(files_to_validate[catagory_dir]), catagory_dir))
@@ -232,18 +226,11 @@ def main():
 
     cv2.destroyAllWindows()
 
-    print("Resulst")
-    print(current_verification_lists)
-
-
     for catagory_dir in catagory_dir_list:
         for verification_type in verification_types:
             upload_verification_file(raw_bucket, clean_dir, catagory_dir, verification_type,\
                  current_verification_lists[catagory_dir][verification_type])
 
-#    upload_files(clean_bucket, valid_files)
-    
-    
 
     
 if __name__ == '__main__':
