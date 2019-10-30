@@ -64,7 +64,7 @@ def get_current_verification_list(bucket_name, verified_list_dir, verification_t
 def download_files(bucket_name, file_names, base_dir = '.'):
     s3 = boto3.client('s3')
     for object_index, object_name in enumerate(file_names):
-        if(not os.path.isfile(object_name)):
+        if(not os.path.isfile(base_dir + '/'  + object_name)):
             try:
                 s3.download_file(bucket_name, object_name, base_dir + '/' + object_name)
             except botocore.exceptions.ClientError as e:
