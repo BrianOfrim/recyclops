@@ -1,10 +1,9 @@
 import os
 from sys import exit
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
-
-keras = tf.keras
 
 IMAGE_SIZE = 224
 BATCH_SIZE = 32
@@ -66,16 +65,16 @@ global_average_layer = tf.keras.layers.GlobalAveragePooling2D()
 feature_batch_average = global_average_layer(feature_batch)
 print(feature_batch_average.shape)
 
-prediction_layer = keras.layers.Dense(len(train_generator.class_indices), activation='softmax')
+prediction_layer = tf.keras.layers.Dense(len(train_generator.class_indices), activation='softmax')
 prediction_batch = prediction_layer(feature_batch_average)
 print(prediction_batch.shape)
 
 model = tf.keras.Sequential([
   base_model,
 #  tf.keras.layers.Conv2D(64, 3, activation='relu'),  
-  tf.keras.layers.Dropout(0.3),
+  tf.keras.layers.Dropout(0.4),
   tf.keras.layers.GlobalAveragePooling2D(),
-  keras.layers.Dense(len(train_generator.class_indices), activation='softmax')
+  tf.keras.layers.Dense(len(train_generator.class_indices), activation='softmax')
 
 ])
 
@@ -93,7 +92,7 @@ validation_steps_per_epoch = val_generator.samples // val_generator.batch_size
 
 print('Training steps per epoch: %i' % training_steps_per_epoch)
 print('Validaiton steps per epoch: %i' % validation_steps_per_epoch)
-initial_epochs = 15
+initial_epochs = 10
 
 history = model.fit_generator(train_generator,
                     epochs=initial_epochs,
@@ -106,6 +105,8 @@ val_acc = history.history['val_accuracy']
 
 loss = history.history['loss']
 val_loss = history.history['val_loss']
+
+plt.ion()
 
 plt.figure(figsize=(8, 8))
 plt.subplot(2, 1, 1)
@@ -124,8 +125,8 @@ plt.ylabel('Cross Entropy')
 plt.ylim([0,1.0])
 plt.title('Training and Validation Loss')
 plt.xlabel('epoch')
-#plt.show()
-
+plt.show()
+plt.pause(0.001)
 
 base_model.trainable = True
 # Let's take a look to see how many layers are in the base model
@@ -181,4 +182,42 @@ plt.legend(loc='upper right')
 plt.title('Training and Validation Loss')
 plt.xlabel('epoch')
 plt.show()
+plt.pause(0.001)
+
+class_names = sorted(val_generator.class_indices.items(), key=lambda pair:pair[1])
+class_names = np.array([key.title() for key, value in class_names])
+print(class_names)
+
+image_batch, label_batch = next(val_generator)
+
+predicted_batch = model.predict(image_batch)
+predicted_id = np.argmax(predicted_batch, axis=-1)
+predicted_label_batch = class_names[predicted_id]
+
+label_id = np.argmax(label_batch, axis=-1)
+
+plt.figure(figsize=(10,9))
+plt.subplots_adjust(hspace=0.5)
+for n in range(30):
+  plt.subplot(6,5,n+1)
+  plt.imshow(image_batch[n])
+  color = "green" if predicted_id[n] == label_id[n] else "red"
+  plt.title(predicted_label_batch[n].title(), color=color)
+  plt.axis('off')
+_ = plt.suptitle("Model predictions (green: correct, red: incorrect)")
+
+
+plt.show()
+
+export_path = './savedModels/%i' % int(time.time())
+model.save(export_path, save_format='tf')
+
+print('Saved model at: %s' % export_path)
+
+# Try reloading the model and comparing the results with the original
+reloaded = tf.keras.models.load_model(export_path)
+result_batch = model.predict(image_batch)
+reloaded_result_batch = reloaded.predict(image_batch)
+
+print(abs(reloaded_result_batch - result_batch).max())
 
