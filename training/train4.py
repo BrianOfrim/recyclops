@@ -7,12 +7,17 @@ import tensorflow as tf
 
 IMAGE_SIZE = 224
 BATCH_SIZE = 32
-VAL_SPLIT = 0.2
+VAL_SPLIT = 0.15
 
 base_dir = './images'
 
 datagen = tf.keras.preprocessing.image.ImageDataGenerator(
-    rescale=1./255, 
+    rescale=1./255,
+    rotation_range=45,
+    width_shift_range=.15,
+    height_shift_range=.15,
+    horizontal_flip=True,
+    zoom_range=0.5,
     validation_split=VAL_SPLIT)
 
 train_generator = datagen.flow_from_directory(
@@ -72,7 +77,7 @@ print(prediction_batch.shape)
 model = tf.keras.Sequential([
   base_model,
 #  tf.keras.layers.Conv2D(64, 3, activation='relu'),  
-  tf.keras.layers.Dropout(0.4),
+  tf.keras.layers.Dropout(0.2),
   tf.keras.layers.GlobalAveragePooling2D(),
   tf.keras.layers.Dense(len(train_generator.class_indices), activation='softmax')
 
@@ -80,7 +85,7 @@ model = tf.keras.Sequential([
 
 base_learning_rate = 0.0001
 model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=base_learning_rate),
-              loss='binary_crossentropy',
+              loss=tf.keras.losses.CategoricalCrossentropy(),
               metrics=['accuracy'])
 
 model.summary()
@@ -125,7 +130,7 @@ plt.ylabel('Cross Entropy')
 plt.ylim([0,1.0])
 plt.title('Training and Validation Loss')
 plt.xlabel('epoch')
-plt.show()
+
 plt.pause(0.001)
 
 base_model.trainable = True
@@ -198,8 +203,8 @@ label_id = np.argmax(label_batch, axis=-1)
 
 plt.figure(figsize=(10,9))
 plt.subplots_adjust(hspace=0.5)
-for n in range(30):
-  plt.subplot(6,5,n+1)
+for n in range(16):
+  plt.subplot(4,4,n+1)
   plt.imshow(image_batch[n])
   color = "green" if predicted_id[n] == label_id[n] else "red"
   plt.title(predicted_label_batch[n].title(), color=color)
@@ -207,6 +212,7 @@ for n in range(30):
 _ = plt.suptitle("Model predictions (green: correct, red: incorrect)")
 
 
+plt.ioff()
 plt.show()
 
 export_path = './savedModels/%i' % int(time.time())
