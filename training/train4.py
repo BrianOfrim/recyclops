@@ -72,9 +72,11 @@ print(prediction_batch.shape)
 
 model = tf.keras.Sequential([
   base_model,
-#  tf.keras.layers.Dropout(0.2),
-  global_average_layer,
-  prediction_layer
+#  tf.keras.layers.Conv2D(64, 3, activation='relu'),  
+  tf.keras.layers.Dropout(0.3),
+  tf.keras.layers.GlobalAveragePooling2D(),
+  keras.layers.Dense(len(train_generator.class_indices), activation='softmax')
+
 ])
 
 base_learning_rate = 0.0001
@@ -91,8 +93,7 @@ validation_steps_per_epoch = val_generator.samples // val_generator.batch_size
 
 print('Training steps per epoch: %i' % training_steps_per_epoch)
 print('Validaiton steps per epoch: %i' % validation_steps_per_epoch)
-initial_epochs = 10
-
+initial_epochs = 15
 
 history = model.fit_generator(train_generator,
                     epochs=initial_epochs,
@@ -123,9 +124,8 @@ plt.ylabel('Cross Entropy')
 plt.ylim([0,1.0])
 plt.title('Training and Validation Loss')
 plt.xlabel('epoch')
-plt.show()
+#plt.show()
 
-exit(0)
 
 base_model.trainable = True
 # Let's take a look to see how many layers are in the base model
@@ -149,10 +149,10 @@ print('Trainable var: %i' % len(model.trainable_variables))
 fine_tune_epochs = 10
 total_epochs =  initial_epochs + fine_tune_epochs
 
-history_fine = model.fit_generator(train_batches,
+history_fine = model.fit_generator(train_generator,
                          epochs=total_epochs,
                          initial_epoch = initial_epochs,
-                         validation_data=validation_batches)
+                         validation_data=val_generator)
 
 
 acc += history_fine.history['accuracy']
