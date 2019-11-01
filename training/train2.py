@@ -66,10 +66,11 @@ for image_batch, label_batch in image_data:
 
 #plt.show()
 
-feature_extractor_url = "https://tfhub.dev/google/tf2-preview/mobilenet_v2/feature_vector/2" #@param {type:"string"}
+# feature_extractor_url = "https://tfhub.dev/google/tf2-preview/mobilenet_v2/feature_vector/2" #@param {type:"string"}
+feature_extractor_url = './modCache'
+print(feature_extractor_url)
 
-feature_extractor_layer = hub.KerasLayer(feature_extractor_url,
-                                         input_shape=(224,224,3))
+feature_extractor_layer = hub.KerasLayer(feature_extractor_url,input_shape=(224,224,3))
 
 feature_batch = feature_extractor_layer(image_batch)
 print(feature_batch.shape)
