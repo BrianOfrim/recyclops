@@ -7,7 +7,7 @@ import tensorflow as tf
 
 IMAGE_SIZE = 224
 BATCH_SIZE = 32
-VAL_SPLIT = 0.15
+VAL_SPLIT = 0.2
 
 base_dir = './images'
 
@@ -84,7 +84,7 @@ model = tf.keras.Sequential([
 ])
 
 base_learning_rate = 0.0001
-model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=base_learning_rate),
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=base_learning_rate),
               loss=tf.keras.losses.CategoricalCrossentropy(),
               metrics=['accuracy'])
 
@@ -97,7 +97,7 @@ validation_steps_per_epoch = val_generator.samples // val_generator.batch_size
 
 print('Training steps per epoch: %i' % training_steps_per_epoch)
 print('Validaiton steps per epoch: %i' % validation_steps_per_epoch)
-initial_epochs = 10
+initial_epochs = 20
 
 history = model.fit_generator(train_generator,
                     epochs=initial_epochs,
@@ -145,7 +145,7 @@ for layer in base_model.layers[:fine_tune_at]:
   layer.trainable =  False
 
 model.compile(loss='binary_crossentropy',
-              optimizer = tf.keras.optimizers.RMSprop(lr=base_learning_rate/10),
+              optimizer = tf.keras.optimizers.Adam(learning_rate=base_learning_rate/10),
               metrics=['accuracy'])
 
 model.summary()
@@ -203,16 +203,14 @@ label_id = np.argmax(label_batch, axis=-1)
 
 plt.figure(figsize=(10,9))
 plt.subplots_adjust(hspace=0.5)
-for n in range(16):
-  plt.subplot(4,4,n+1)
+for n in range(32):
+  plt.subplot(6,5,n+1)
   plt.imshow(image_batch[n])
   color = "green" if predicted_id[n] == label_id[n] else "red"
   plt.title(predicted_label_batch[n].title(), color=color)
   plt.axis('off')
 _ = plt.suptitle("Model predictions (green: correct, red: incorrect)")
 
-
-plt.ioff()
 plt.show()
 
 export_path = './savedModels/%i' % int(time.time())
