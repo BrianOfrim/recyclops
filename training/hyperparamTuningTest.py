@@ -9,7 +9,7 @@ from tensorboard.plugins.hparams import api as hp
 IMAGE_SIZE = 224
 BATCH_SIZE = 32
 VAL_SPLIT = 0.2
-NUM_EPOCHS = 5
+NUM_EPOCHS = 10
 
 HP_BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([8, 16, 32, 64]))
 HP_DROPOUT = hp.HParam('dropout', hp.Discrete([0.0, 0.1, 0.2, 0.3, 0.4, 0.5]))
