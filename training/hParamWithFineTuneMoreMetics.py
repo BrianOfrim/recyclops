@@ -10,23 +10,21 @@ import itertools as it
 IMAGE_SIZE = 224
 BATCH_SIZE = 32
 VAL_SPLIT = 0.2
-NUM_INITIAL_EPOCHS = 2
-NUM_FINE_TUNE_EPOCHS = 2
-#
-#HP_BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([8, 16, 32]))
-#HP_DROPOUT = hp.HParam('dropout', hp.Discrete([0.0, 0.1, 0.2, 0.3, 0.4, 0.5]))
-#HP_OPTIMIZER = hp.HParam('optimizer', hp.Discrete(['adam','RMSprop']))
-#HP_BASE_LEARNING_RATE = hp.HParam('base_learning_rate', hp.Discrete([0.001, 0.0001]))
+NUM_INITIAL_EPOCHS = 10
+NUM_FINE_TUNE_EPOCHS = 10
+
+HP_BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([8, 16, 32]))
+HP_DROPOUT = hp.HParam('dropout', hp.Discrete([0.0, 0.1, 0.2, 0.3, 0.4, 0.5]))
+HP_OPTIMIZER = hp.HParam('optimizer', hp.Discrete(['adam','RMSprop']))
+HP_BASE_LEARNING_RATE = hp.HParam('base_learning_rate', hp.Discrete([0.001, 0.0001]))
 #HP_FINE_TUNE = hp.HParam('do_fine_tune', hp.Discrete([True, False]))
 
-HP_BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([8, 16]))
-HP_DROPOUT = hp.HParam('dropout', hp.Discrete([0.0, 0.1]))
-HP_OPTIMIZER = hp.HParam('optimizer', hp.Discrete(['adam']))
-HP_BASE_LEARNING_RATE = hp.HParam('base_learning_rate', hp.Discrete([0.001]))
-HP_FINE_TUNE = hp.HParam('do_fine_tune', hp.Discrete([True]))
-
-
-METRIC_ACCURACY = 'accuracy'
+#HP_BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([8, 16]))
+#HP_DROPOUT = hp.HParam('dropout', hp.Discrete([0.0, 0.1]))
+#HP_OPTIMIZER = hp.HParam('optimizer', hp.Discrete(['adam']))
+#HP_BASE_LEARNING_RATE = hp.HParam('base_learning_rate', hp.Discrete([0.001]))
+#HP_FINE_TUNE = hp.HParam('do_fine_tune', hp.Discrete([True]))
+#
 
 HPARAMS = [
     HP_BATCH_SIZE,
@@ -36,11 +34,10 @@ HPARAMS = [
     HP_FINE_TUNE,
 ]
 
+METRIC_ACCURACY = 'accuracy'
+
+
 METRICS = [
-    hp.Metric(
-        METRIC_ACCURACY,
-        display_name='Accuracy'
-    ),
     hp.Metric(
         "epoch_accuracy",
         group="validation",
@@ -62,6 +59,7 @@ METRICS = [
         display_name="loss (train)",
     ),
 ]
+
 
 base_dir = './images'
 
@@ -100,14 +98,15 @@ def train_test_model(run_dir, hparams):
         batch_size=hparams[HP_BATCH_SIZE], 
         subset='validation')
     
-
+    initial_dir = run_dir + '-initial'
+    
     callback = tf.keras.callbacks.TensorBoard(
-        run_dir,
+        initial_dir,
         update_freq='epoch',
         profile_batch=0,  # workaround for issue #2084
     )
 
-    hparams_callback = hp.KerasCallback(run_dir, hparams)
+    hparams_callback = hp.KerasCallback(initial_dir, hparams)
 
     model = tf.keras.Sequential([
       base_model,
@@ -125,26 +124,21 @@ def train_test_model(run_dir, hparams):
     model.compile(
       optimizer=opt,
       loss='categorical_crossentropy',
-      metrics=['accuracy'])
+      metrics=[METRIC_ACCURACY])
 
-    callback_ft = tf.keras.callbacks.TensorBoard(
-        run_dir,
-        update_freq='epoch',
-        profile_batch=0,  # workaround for issue #2084
-    )
-
-    hparams_callback_ft = hp.KerasCallback(run_dir, hparams)
-
-
-
-    model.fit_generator(
+    initial_history = model.fit_generator(
         train_generator,
         epochs=NUM_INITIAL_EPOCHS,
         validation_data=val_generator,
-        callbacks=[callback_ft, hparams_callback_ft])
+        callbacks=[callback, hparams_callback])
+
+
+    print(initial_history.history)
     
-    if(not hparams[HP_FINE_TUNE]):
-        return
+    for key in initial_history.history:
+        print(key)
+        print(initial_history.history[key])
+    hparams[HP_FINE_TUNE] = True
     
     if(hparams[HP_OPTIMIZER]=='adam'):
         opt = tf.keras.optimizers.Adam(hparams[HP_BASE_LEARNING_RATE]/10)
@@ -158,17 +152,28 @@ def train_test_model(run_dir, hparams):
     for layer in base_model.layers[:fine_tune_at]:
         layer.trainable =  False
 
+    fine_tune_dir = run_dir + '-fine_tune'
+
+    callback_ft = tf.keras.callbacks.TensorBoard(
+        fine_tune_dir,
+        update_freq='epoch',
+        profile_batch=0,  # workaround for issue #2084
+    )
+
+    hparams_callback_ft = hp.KerasCallback(fine_tune_dir, hparams)
+
+
     model.compile(
       optimizer=opt,
       loss='categorical_crossentropy',
-      metrics=['accuracy'])
+      metrics=[METRIC_ACCURACY])
 
-    model.fit_generator(
+    ft_history = model.fit_generator(
         train_generator,
         epochs=NUM_INITIAL_EPOCHS+NUM_FINE_TUNE_EPOCHS,
         initial_epoch=NUM_INITIAL_EPOCHS,
         validation_data=val_generator,
-        callbacks=[callback, hparams_callback])
+        callbacks=[callback_ft, hparams_callback_ft])
  
 
 def run(run_dir, hparams):
@@ -180,16 +185,15 @@ for batch_size in HP_BATCH_SIZE.domain.values:
     for dropout in HP_DROPOUT.domain.values:
         for optimizer in HP_OPTIMIZER.domain.values:
             for base_learning_rate in HP_BASE_LEARNING_RATE.domain.values:
-                for fine_tune in HP_FINE_TUNE.domain.values:
-                    hparams = {
-                        HP_BATCH_SIZE: batch_size,
-                        HP_DROPOUT: dropout,
-                        HP_OPTIMIZER: optimizer,
-                        HP_BASE_LEARNING_RATE: base_learning_rate,
-                        HP_FINE_TUNE: fine_tune,
-                    }
-                    run_name = "run-%d" % session_num
-                    print('--- Starting trial: %s' % run_name)
-                    print({h.name: hparams[h] for h in hparams})
-                    run( log_dir + run_name, hparams)
-                    session_num += 1
+                hparams = {
+                    HP_BATCH_SIZE: batch_size,
+                    HP_DROPOUT: dropout,
+                    HP_OPTIMIZER: optimizer,
+                    HP_BASE_LEARNING_RATE: base_learning_rate,
+                    HP_FINE_TUNE: False,
+                }
+                run_name = "run-%d" % session_num
+                print('--- Starting trial: %s' % run_name)
+                print({h.name: hparams[h] for h in hparams})
+                run( log_dir + run_name, hparams)
+                session_num += 1
