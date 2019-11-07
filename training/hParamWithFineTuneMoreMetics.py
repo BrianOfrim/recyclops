@@ -17,7 +17,7 @@ HP_BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([8, 16, 32]))
 HP_DROPOUT = hp.HParam('dropout', hp.Discrete([0.0, 0.1, 0.2, 0.3, 0.4, 0.5]))
 HP_OPTIMIZER = hp.HParam('optimizer', hp.Discrete(['adam','RMSprop']))
 HP_BASE_LEARNING_RATE = hp.HParam('base_learning_rate', hp.Discrete([0.001, 0.0001]))
-#HP_FINE_TUNE = hp.HParam('do_fine_tune', hp.Discrete([True, False]))
+HP_FINE_TUNE = hp.HParam('do_fine_tune', hp.Discrete([True, False]))
 
 #HP_BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([8, 16]))
 #HP_DROPOUT = hp.HParam('dropout', hp.Discrete([0.0, 0.1]))
@@ -41,20 +41,20 @@ METRICS = [
     hp.Metric(
         "epoch_accuracy",
         group="validation",
-        display_name="accuracy (val.)",
+        display_name="accuracy (val)",
     ),
     hp.Metric(
         "epoch_loss",
         group="validation",
-        display_name="loss (val.)",
+        display_name="loss (val)",
     ),
     hp.Metric(
-        "batch_accuracy",
+        "epoch_accuracy",
         group="train",
         display_name="accuracy (train)",
     ),
     hp.Metric(
-        "batch_loss",
+        "epoch_loss",
         group="train",
         display_name="loss (train)",
     ),
@@ -132,14 +132,6 @@ def train_test_model(run_dir, hparams):
         validation_data=val_generator,
         callbacks=[callback, hparams_callback])
 
-
-    print(initial_history.history)
-    
-    for key in initial_history.history:
-        print(key)
-        print(initial_history.history[key])
-    hparams[HP_FINE_TUNE] = True
-    
     if(hparams[HP_OPTIMIZER]=='adam'):
         opt = tf.keras.optimizers.Adam(hparams[HP_BASE_LEARNING_RATE]/10)
     if(hparams[HP_OPTIMIZER]=='RMSprop'):
