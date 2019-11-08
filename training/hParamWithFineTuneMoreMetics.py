@@ -129,7 +129,9 @@ def train_test_model(run_dir, hparams):
     initial_history = model.fit_generator(
         train_generator,
         epochs=NUM_INITIAL_EPOCHS,
+        steps_per_epoch=train_generator.samples//train_generator.batch_size,
         validation_data=val_generator,
+        validation_steps=val_generator.samples//val_generator.batch_size,
         callbacks=[callback, hparams_callback])
 
     if(hparams[HP_OPTIMIZER]=='adam'):
@@ -154,7 +156,6 @@ def train_test_model(run_dir, hparams):
 
     hparams_callback_ft = hp.KerasCallback(fine_tune_dir, hparams)
 
-
     model.compile(
       optimizer=opt,
       loss='categorical_crossentropy',
@@ -164,8 +165,10 @@ def train_test_model(run_dir, hparams):
         train_generator,
         epochs=NUM_INITIAL_EPOCHS+NUM_FINE_TUNE_EPOCHS,
         initial_epoch=NUM_INITIAL_EPOCHS,
+        steps_per_epoch=train_generator.samples//train_generator.batch_size,
         validation_data=val_generator,
-        callbacks=[callback_ft, hparams_callback_ft])
+        validation_steps=val_generator.samples//val_generator.batch_size,
+        callbacks=[callback, hparams_callback])
  
 
 def run(run_dir, hparams):
