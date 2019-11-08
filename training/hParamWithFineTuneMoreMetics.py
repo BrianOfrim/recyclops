@@ -134,6 +134,8 @@ def train_test_model(run_dir, hparams):
         validation_steps=val_generator.samples//val_generator.batch_size,
         callbacks=[callback_init, hparams_callback_init])
 
+    hparams[HP_FINE_TUNE] = True
+
     if(hparams[HP_OPTIMIZER]=='adam'):
         opt = tf.keras.optimizers.Adam(hparams[HP_BASE_LEARNING_RATE]/10)
     if(hparams[HP_OPTIMIZER]=='RMSprop'):
