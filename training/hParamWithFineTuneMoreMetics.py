@@ -100,13 +100,13 @@ def train_test_model(run_dir, hparams):
     
     initial_dir = run_dir + '-initial'
     
-    callback = tf.keras.callbacks.TensorBoard(
+    callback_init = tf.keras.callbacks.TensorBoard(
         initial_dir,
         update_freq='epoch',
         profile_batch=0,  # workaround for issue #2084
     )
 
-    hparams_callback = hp.KerasCallback(initial_dir, hparams)
+    hparams_callback_init = hp.KerasCallback(initial_dir, hparams)
 
     model = tf.keras.Sequential([
       base_model,
@@ -132,7 +132,7 @@ def train_test_model(run_dir, hparams):
         steps_per_epoch=train_generator.samples//train_generator.batch_size,
         validation_data=val_generator,
         validation_steps=val_generator.samples//val_generator.batch_size,
-        callbacks=[callback, hparams_callback])
+        callbacks=[callback_init, hparams_callback_init])
 
     if(hparams[HP_OPTIMIZER]=='adam'):
         opt = tf.keras.optimizers.Adam(hparams[HP_BASE_LEARNING_RATE]/10)
@@ -168,7 +168,7 @@ def train_test_model(run_dir, hparams):
         steps_per_epoch=train_generator.samples//train_generator.batch_size,
         validation_data=val_generator,
         validation_steps=val_generator.samples//val_generator.batch_size,
-        callbacks=[callback, hparams_callback])
+        callbacks=[callback_ft, hparams_callback_ft])
  
 
 def run(run_dir, hparams):
