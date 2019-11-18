@@ -1,0 +1,27 @@
+1573177748
+run-14-initial 4f4823a7fbd4e08
+8	0.3	adam	0.0001	false	0.839	0.591	0.991	0.0334
+Unstable accuracy and loss curves
+run-0-initial 848c1589f5e8b326
+8	0.0	RMSprop	0.0001	false	0.830	0.664	0.980	0.0608
+Dip and then icrease in valAcc, Incease and then dip in valLoss. Extend.
+run-36-initial 1f766ca8e602da9b0f
+16	0.3	RMAprop	0.0001 false	0.804	1.2009	0.996	0.0147
+VA - dip then rise, VL Unstable
+run-68-initial 1c85d8f7c26e9913
+32	0.5	RMSprop	0.0001 false	0.802	0.745	0.991	0.0212
+VA plateau then rise. VL rise then fall. Extend.
+run-8-initial 6fd1db746f1ee77
+8	0.2	RMSprop	0.0001	false	0.777	1.04 	0.991	0.0217
+VA - Rise, fall rise. VL rise fall. Extend. 
+run-18-initial 1aebf23bb76cb3
+8	0.4	adam	0.0001	false	0.768	0.591	0.987	0.0351	
+VA - Unstable rise, VL - Unstable fall. Extend
+
+
+
+
+
+
+
+
