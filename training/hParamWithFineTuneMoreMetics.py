@@ -10,14 +10,14 @@ import itertools as it
 IMAGE_SIZE = 224
 BATCH_SIZE = 32
 VAL_SPLIT = 0.2
-NUM_INITIAL_EPOCHS = 10
+NUM_INITIAL_EPOCHS = 20
 NUM_FINE_TUNE_EPOCHS = 10
 
-HP_BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([2, 4, 8, 16]))
-HP_DROPOUT = hp.HParam('dropout', hp.Discrete([0.0, 0.1, 0.2, 0.3, 0.4]))
+HP_BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([2, 4, 8]))
+HP_DROPOUT = hp.HParam('dropout', hp.Discrete([0.0, 0.1, 0.2, 0.3]))
 HP_OPTIMIZER = hp.HParam('optimizer', hp.Discrete(['adam','RMSprop']))
-HP_BASE_LEARNING_RATE = hp.HParam('base_learning_rate', hp.Discrete([0.001, 0.0001]))
-HP_FINE_TUNE = hp.HParam('do_fine_tune', hp.Discrete([True, False]))
+HP_BASE_LEARNING_RATE = hp.HParam('base_learning_rate', hp.Discrete([0.0001, 0.00001, 0.000001]))
+HP_FINE_TUNE = hp.HParam('do_fine_tune', hp.Discrete([False]))
 
 #HP_BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([8, 16]))
 #HP_DROPOUT = hp.HParam('dropout', hp.Discrete([0.0, 0.1]))
