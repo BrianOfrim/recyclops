@@ -163,6 +163,11 @@ def run_training():
 
     tf.saved_model.save(model, flags.FLAGS.model_dir + '/' + str(start_time))
 
+def print_flags():
+    print('Generating a trained model using the following parameters:')
+    for key, value in tf.flags.FLAGS.__flags.items():
+        print(key, ': ', value)
+
 def main(unused_argv):
     run_training()
 
