@@ -165,10 +165,11 @@ def run_training():
 
 def print_flags():
     print('Generating a trained model using the following parameters:')
-    for key, value in tf.flags.FLAGS.__flags.items():
+    for key, value in flags.FLAGS.__flags.items():
         print(key, ': ', value)
 
 def main(unused_argv):
+    print_flags()
     run_training()
 
 if __name__ == "__main__":
