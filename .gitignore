@@ -2,3 +2,7 @@
 ./dataCleaning/garbage/
 ./dataGathering/recycle/
 ./dataGathering/garbage/
+./training/images/
+./training/logs/
+./training/verified/
+
