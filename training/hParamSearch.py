@@ -14,17 +14,10 @@ NUM_INITIAL_EPOCHS = 20
 NUM_FINE_TUNE_EPOCHS = 10
 
 HP_BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([2, 4, 8]))
-HP_DROPOUT = hp.HParam('dropout', hp.Discrete([0.0, 0.1, 0.2, 0.3]))
+HP_DROPOUT = hp.HParam('dropout', hp.Discrete([0.0, 0.1, 0.2]))
 HP_OPTIMIZER = hp.HParam('optimizer', hp.Discrete(['adam','RMSprop']))
-HP_BASE_LEARNING_RATE = hp.HParam('base_learning_rate', hp.Discrete([0.0001, 0.00001, 0.000001]))
+HP_BASE_LEARNING_RATE = hp.HParam('base_learning_rate', hp.Discrete([0.0001, 0.00001]))
 HP_FINE_TUNE = hp.HParam('do_fine_tune', hp.Discrete([False]))
-
-#HP_BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([8, 16]))
-#HP_DROPOUT = hp.HParam('dropout', hp.Discrete([0.0, 0.1]))
-#HP_OPTIMIZER = hp.HParam('optimizer', hp.Discrete(['adam']))
-#HP_BASE_LEARNING_RATE = hp.HParam('base_learning_rate', hp.Discrete([0.001]))
-#HP_FINE_TUNE = hp.HParam('do_fine_tune', hp.Discrete([True]))
-#
 
 HPARAMS = [
     HP_BATCH_SIZE,
@@ -35,7 +28,6 @@ HPARAMS = [
 ]
 
 METRIC_ACCURACY = 'accuracy'
-
 
 METRICS = [
     hp.Metric(
@@ -60,11 +52,8 @@ METRICS = [
     ),
 ]
 
-
 base_dir = './images'
-
 log_dir = 'logs/hparam_tuning/%i/' % int(time.time())
-
 
 with tf.summary.create_file_writer(log_dir).as_default():
   hp.hparams_config(
@@ -134,6 +123,9 @@ def train_test_model(run_dir, hparams):
         validation_steps=val_generator.samples//val_generator.batch_size,
         callbacks=[callback_init, hparams_callback_init])
 
+
+    exit(0) # do not run fine tuning
+
     hparams[HP_FINE_TUNE] = True
 
     if(hparams[HP_OPTIMIZER]=='adam'):
@@ -177,7 +169,6 @@ def run(run_dir, hparams):
     train_test_model(run_dir, hparams)
 
 session_num = 0
-
 for batch_size in HP_BATCH_SIZE.domain.values:
     for dropout in HP_DROPOUT.domain.values:
         for optimizer in HP_OPTIMIZER.domain.values:
