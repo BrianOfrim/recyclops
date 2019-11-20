@@ -65,6 +65,9 @@ def configure_trigger_ready_line(cam):
         return False
     return True
 
+def triggerReady(cam):
+    return (cam.LineStatusAll() & (1 << 2)) != 0
+
 def grab_next_image_by_trigger(cam):
     try:
         # Execute software trigger
@@ -103,7 +106,6 @@ def process_images(serial_number, image_queue):
     
     cv2.destroyAllWindows()
 
-#def triggerReady(cam)
 
 def acquire_images(cam, image_queue):
     try:
@@ -155,9 +157,12 @@ def acquire_images(cam, image_queue):
         # Retrieve, convert, and save images
         while(keyboard.is_pressed('ENTER') == False):
             try:
-                time.sleep(0.2)
+                while(not triggerReady(cam)):
+                    time.sleep(0.001)
+                    pass
+                
                 grab_next_image_by_trigger(cam)
-
+                
                 image_result = cam.GetNextImage()
 
                 if image_result.IsIncomplete():
