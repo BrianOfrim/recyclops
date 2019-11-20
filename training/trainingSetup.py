@@ -69,8 +69,12 @@ def download_files(bucket_name, file_names, base_dir = '.'):
                 s3.download_file(bucket_name, object_name, base_dir + '/' + object_name)
             except botocore.exceptions.ClientError as e:
                 logging.error(e)
-        logging.info('Downloading file from %s:%s, %i/%i' % \
-            (bucket_name, object_name, object_index + 1, len(file_names)))
+            logging.info('Downloading file from %s:%s, %i/%i' % \
+                (bucket_name, object_name, object_index + 1, len(file_names)))
+        else:
+            logging.info('File already downloaded: %s:%s, %i/%i' % \
+                (bucket_name, object_name, object_index + 1, len(file_names)))
+
 
 def main():
     # Set up logging
