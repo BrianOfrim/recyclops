@@ -10,9 +10,21 @@ import tensorflow as tf
 import threading
 import queue
 
-WINDOW_NAME = "Recyclops"
+WINDOW_NAME = 'Recyclops'
 FONT = cv2.FONT_HERSHEY_SIMPLEX
-NUM_BUFFERS = 5
+NUM_BUFFERS = 3
+TRIGGER_READY_LINE = 'Line2'
+
+flags.DEFINE_float(
+    'display_scale_factor',
+    1,
+    'Factor to scale images by for display ',
+)
+flags.DEFINE_bool(
+    'mirror_display',
+    True,
+    'Mirror the images for display',
+)
 
 def configure_trigger(cam):
     try:
@@ -30,6 +42,28 @@ def configure_trigger(cam):
         return False
     return True
 
+def reset_trigger(cam):
+    try:
+        if cam.TriggerMode.GetAccessMode() != PySpin.RW:
+            print('Unable to disable trigger mode (node retrieval). Aborting...')
+            return False
+        cam.TriggerMode.SetValue(PySpin.TriggerMode_Off)
+    except PySpin.SpinnakerException as ex:
+        print('Error: %s' % ex)
+        return False
+    return True
+
+def configure_trigger_ready_line(cam):
+    try:
+        cam.LineSelector.SetValue(PySpin.LineSelector_Line2)
+        cam.LineMode.SetValue(PySpin.LineMode_Output)
+        lineSourceNode = PySpin.CEnumerationPtr(cam.GetNodeMap().GetNode("LineSource"))
+        frameTriggerWaitEntry = lineSourceNode.GetEntryByName("FrameTriggerWait") 
+        lineSourceNode.SetIntValue(frameTriggerWaitEntry.GetValue())
+    except PySpin.SpinnakerException as ex:
+        print('Error: %s' % ex)
+        return False
+    return True
 
 def grab_next_image_by_trigger(cam):
     try:
@@ -44,34 +78,32 @@ def grab_next_image_by_trigger(cam):
     return True
 
 
-def reset_trigger(cam):
-    try:
-        result = True
-        if cam.TriggerMode.GetAccessMode() != PySpin.RW:
-            print('Unable to disable trigger mode (node retrieval). Aborting...')
-            return False
-        cam.TriggerMode.SetValue(PySpin.TriggerMode_Off)
-    except PySpin.SpinnakerException as ex:
-        print('Error: %s' % ex)
-        result = False
-    return result
-
-
-
 def process_images(serial_number, image_queue):
     cv2.namedWindow(WINDOW_NAME)
     cv2.moveWindow(WINDOW_NAME, 0, 0)
-    
+    display_scale_factor = flags.FLAGS.display_scale_factor    
     while(1):
         image = image_queue.get(block = True)
         if image is None:
             break
+        if len(image.shape) < 3:
+            # convert the image from BayerRG8 to RGB8
+            image = cv2.cvtColor(image, cv2.COLOR_BayerRG2RGB)
+        
+        if display_scale_factor != 1:
+            # reduce the image resolution
+            image = cv2.resize(image, (0,0), fx=display_scale_factor, fy=display_scale_factor)
+        
+        if flags.FLAGS.mirror_display:
+            # flip image for mirror effect
+            image = cv2.flip(image, flipCode = 1)
         
         cv2.imshow(WINDOW_NAME, image)
         cv2.waitKey(1)
     
     cv2.destroyAllWindows()
 
+#def triggerReady(cam)
 
 def acquire_images(cam, image_queue):
     try:
@@ -84,7 +116,7 @@ def acquire_images(cam, image_queue):
 
         # Retrieve Buffer Handling Mode Information
         handling_mode = PySpin.CEnumerationPtr(s_node_map.GetNode('StreamBufferHandlingMode'))
-        handling_mode_entry = handling_mode.GetEntryByName('OldestFirst')
+        handling_mode_entry = handling_mode.GetEntryByName('NewestOnly')
         handling_mode.SetIntValue(handling_mode_entry.GetValue())
 
         # Set stream buffer Count Mode to manual
@@ -123,21 +155,16 @@ def acquire_images(cam, image_queue):
         # Retrieve, convert, and save images
         while(keyboard.is_pressed('ENTER') == False):
             try:
-                time.sleep(0.5)
+                time.sleep(0.2)
                 grab_next_image_by_trigger(cam)
 
-                #  Retrieve next received image
                 image_result = cam.GetNextImage()
 
-                #  Ensure image completion
                 if image_result.IsIncomplete():
                     print('Image incomplete with image status %d ...' % image_result.GetImageStatus())
-
                 else:
-
                     # Put a numpy array of the image data into the image queue 
                     image_queue.put(image_result.GetNDArray())
-
                     # Release image
                     image_result.Release()
 
@@ -171,6 +198,11 @@ def run_single_camera(cam):
         # Configure trigger
         if configure_trigger(cam) is False:
             return False
+
+        # Configure trigger ready line
+        if configure_trigger_ready_line(cam) is False:
+            return False
+
 
         image_queue = queue.Queue()
 
