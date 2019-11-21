@@ -62,9 +62,23 @@ flags.DEFINE_string(
     'Base directory to save trined models',
 )
 
+def create_output_dir(dir_name):
+    if(not os.path.isdir(dir_name) or not os.path.exists(dir_name)):
+        print('Creating output directory: %s' % dir_name)
+        try:
+            os.mkdir(dir_name)
+        except OSError:
+            print ("Creation of the directory %s failed" % dir_name)
+            return
+        else:
+            print ("Successfully created the directory %s " % dir_name)
+
+
 def run_training():
     start_time = int(time.time())
     
+    saved_model_dir = flags.FLAGS.model_dir + '/' + str(start_time)
+
     initial_log_dir = flags.FLAGS.train_log_dir + '/' + str(start_time) + '/initial'
 
     IMG_SHAPE = (flags.FLAGS.image_size, flags.FLAGS.image_size, 3)
@@ -91,6 +105,16 @@ def run_training():
         batch_size=flags.FLAGS.batch_size, 
         subset='validation')
 
+    labels = '\n'.join(sorted(train_generator.class_indices.keys()))
+    
+    print('Labels:')
+    print(train_generator.class_indices)
+    
+    create_output_dir(saved_model_dir)
+    
+    with open(saved_model_dir + '/labels.txt', 'w') as f:
+        f.write(labels)
+    
     callback_init = tf.keras.callbacks.TensorBoard(
         initial_log_dir,
         update_freq='epoch',
@@ -124,7 +148,7 @@ def run_training():
         callbacks=[callback_init])
 
     if not flags.FLAGS.fine_tune:
-        tf.saved_model.save(model, flags.FLAGS.model_dir + '/' + str(start_time))
+        model.save(saved_model_dir)
         return
 
     base_model.trainable = True
@@ -161,7 +185,7 @@ def run_training():
         validation_steps=val_generator.samples//val_generator.batch_size,
         callbacks=[callback_ft])
 
-    tf.saved_model.save(model, flags.FLAGS.model_dir + '/' + str(start_time))
+    model.save(saved_model_dir)
 
 def print_flags():
     print('Generating a trained model using the following parameters:')
@@ -169,7 +193,7 @@ def print_flags():
         print(key, ': ', value)
 
 def main(unused_argv):
-    print_flags()
+    #print_flags()
     run_training()
 
 if __name__ == "__main__":

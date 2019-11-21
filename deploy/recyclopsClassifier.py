@@ -1,3 +1,4 @@
+import os
 import os.path
 import time
 import keyboard
@@ -24,6 +25,21 @@ flags.DEFINE_bool(
     'mirror_display',
     True,
     'Mirror the images for display',
+)
+flags.DEFINE_string(
+    'inference_model_path',
+    '',
+    'Path of the tensorflow model to load an use for inference',
+)
+flags.DEFINE_string(
+    'model_storage_dir',
+    '../training/savedModels',
+    'Direcory where models are saved after training',
+)
+flags.DEFINE_integer(
+    'inference_image_size',
+    224,
+    'Height and width of the images input into the network',
 )
 
 def configure_trigger(cam):
@@ -80,11 +96,42 @@ def grab_next_image_by_trigger(cam):
         return False
     return True
 
+def load_inference_model():
+    dir_to_load_from = ''
+    if(flags.FLAGS.inference_model_path != ''):
+        # check if the model is of the correct type and exists)
+        dir_to_load_from = flags.FLAGS.inference_model_path
+        if(not dir_to_load_from.endswith('.pb')):
+            print('Specified inference model file %s does not end with .pb' % flags.FLAGS.inference_model_path)
+            return None
+        if(not os.path.isdir(dir_to_load_from)):
+            print('Specified inference model dir %s does not exist' % flags.FLAGS.inference_model_path)
+            return None
+    else:
+        # search for the newest trianed model
+        model_storage_dirpath, model_storage_dirs, _ = next(os.walk(flags.FLAGS.model_storage_dir))
+        model_storage_dirs.sort(reverse=True)
+        if len(model_storage_dirs) == 0:
+            print('There are no directories in %s...' % flags.FLAGS.model_storage_dir)
+            return None
+        dir_to_load_from = os.path.abspath(os.path.join(model_storage_dirpath, model_storage_dirs[0]))
+    
+    print('File to load model from: %s' % dir_to_load_from)
+    return tf.keras.models.load_model(dir_to_load_from) 
 
 def process_images(serial_number, image_queue):
+    # Fetch the inference model
+    model = load_inference_model()
+
+    if model is not None:
+        model.build((None, flags.FLAGS.inference_image_size, flags.FLAGS.inference_image_size, 3))
+        model.summary()
+
+    # UI setup
     cv2.namedWindow(WINDOW_NAME)
     cv2.moveWindow(WINDOW_NAME, 0, 0)
     display_scale_factor = flags.FLAGS.display_scale_factor    
+    
     while(1):
         image = image_queue.get(block = True)
         if image is None:
@@ -207,7 +254,6 @@ def run_single_camera(cam):
         # Configure trigger ready line
         if configure_trigger_ready_line(cam) is False:
             return False
-
 
         image_queue = queue.Queue()
 
