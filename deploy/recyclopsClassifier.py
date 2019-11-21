@@ -1,7 +1,8 @@
+import sys
 import os
 import os.path
 import time
-import keyboard
+import select
 import PySpin
 import cv2
 from absl import app
@@ -42,6 +43,19 @@ flags.DEFINE_integer(
     224,
     'Height and width of the images input into the network',
 )
+flags.DEFINE_float(
+    'confidence_threshold',
+    0.8,
+    'Confidence above which to display a classification label',
+)
+
+def heardEnter():
+    i,o,e = select.select([sys.stdin],[],[],0.0001)
+    for s in i:
+        if s == sys.stdin:
+            input = sys.stdin.readline()
+            return True
+    return False
 
 def configure_trigger(cam):
     try:
@@ -126,8 +140,7 @@ def process_images(serial_number, image_queue):
     # Fetch the inference model
     classifier, labels = load_inference_model()
 
-    inference_image_height_width = flags.FLAGS.inference_image_size 
-    
+    inference_image_height_width = flags.FLAGS.inference_image_size     
 
     if classifier is not None:
         classifier.build((None, inference_image_height_width, inference_image_height_width, 3))
@@ -141,7 +154,8 @@ def process_images(serial_number, image_queue):
     display_scale_factor = flags.FLAGS.display_scale_factor    
     
     while(1):
-        
+      
+        label_text = ''
         image = image_queue.get(block = True)
         
         if image is None:
@@ -157,17 +171,24 @@ def process_images(serial_number, image_queue):
             inference_image = inference_image/255.0
             result = classifier.predict(inference_image[np.newaxis, ...], verbose=True)
             print(result)
-            predicted_class = np.argmax(result[0], axis=-1)
-            print("Class: %i, Label: %s ,Confidence: %.4f" % (predicted_class, labels[predicted_class] ,result[0][predicted_class]))            
+            predicted_class_number = np.argmax(result[0], axis=-1)
+            predicted_class_label = labels[predicted_class_number] 
+            confidence_level = result[0][predicted_class_number] 
+            print("Class: %i, Label: %s ,Confidence: %.4f" % (predicted_class_number, predicted_class_label, confidence_level))            
+            if(confidence_level >= flags.FLAGS.confidence_threshold):
+                label_text = "%s [%.2f]" % (predicted_class_label, confidence_level)
+       
+        if flags.FLAGS.mirror_display == True:
+            # flip image for mirror effect
+            image = cv2.flip(image, flipCode = 1)
+       
+        if label_text != '':
+            image = cv2.putText(image, label_text, (0,80), FONT, 3, (0, 255, 0), 3, cv2.LINE_AA)
 
         if display_scale_factor != 1:
             # reduce the image resolution
             image = cv2.resize(image, (0,0), fx=display_scale_factor, fy=display_scale_factor)
-        
-        if flags.FLAGS.mirror_display:
-            # flip image for mirror effect
-            image = cv2.flip(image, flipCode = 1)
-        
+ 
         cv2.imshow(WINDOW_NAME, image)
         cv2.waitKey(1)
     
@@ -222,7 +243,12 @@ def acquire_images(cam, image_queue):
         device_serial_number = cam.GetUniqueID()
 
         # Retrieve, convert, and save images
-        while(keyboard.is_pressed('ENTER') == False):
+        while(1):
+
+            # Check for user input
+            if(heardEnter()):
+                break
+
             try:
                 while(not triggerReady(cam)):
                     time.sleep(0.001)
