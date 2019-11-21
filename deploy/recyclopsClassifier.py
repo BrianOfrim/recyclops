@@ -35,7 +35,7 @@ flags.DEFINE_string(
 )
 flags.DEFINE_string(
     'model_storage_dir',
-    '../training/savedModels',
+    '../train/savedModels',
     'Direcory where models are saved after training',
 )
 flags.DEFINE_integer(

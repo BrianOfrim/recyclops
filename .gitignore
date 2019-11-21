@@ -1,8 +1,12 @@
-./dataCleaning/recycle/
-./dataCleaning/garbage/
-./dataGathering/recycle/
-./dataGathering/garbage/
-./training/images/
-./training/logs/
-./training/verified/
+./cleam/recycle/
+./clean/garbage/
+./clean/verified/
+./gather/recycle/
+./gather/garbage/
+./train/images/
+./train/logs/
+./train/verified/
+./train/savedModels/
+./train/verified/
+
 
