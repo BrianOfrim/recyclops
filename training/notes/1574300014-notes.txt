@@ -1,0 +1,4 @@
+1574300014
+batch_size	dropout	optimizer	base_learning_rate	do_file_tune	acc(Val)	loss(val)	acc(train)	loss(train)
+4		0.2			adam			false		0.856		0.4767		0.987		0.0384
+very promising, extent to see if trend continues

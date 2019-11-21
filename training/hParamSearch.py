@@ -124,7 +124,7 @@ def train_test_model(run_dir, hparams):
         callbacks=[callback_init, hparams_callback_init])
 
 
-    exit(0) # do not run fine tuning
+    return # do not run fine tuning
 
     hparams[HP_FINE_TUNE] = True
 
