@@ -12,6 +12,7 @@ import threading
 import queue
 
 WINDOW_NAME = 'Recyclops'
+INFERENCE_DEBUG_WINDOW_NAME = 'InferenceDebug'
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 NUM_BUFFERS = 3
 TRIGGER_READY_LINE = 'Line2'
@@ -98,12 +99,10 @@ def grab_next_image_by_trigger(cam):
 
 def load_inference_model():
     dir_to_load_from = ''
+    labels = []
     if(flags.FLAGS.inference_model_path != ''):
         # check if the model is of the correct type and exists)
         dir_to_load_from = flags.FLAGS.inference_model_path
-        if(not dir_to_load_from.endswith('.pb')):
-            print('Specified inference model file %s does not end with .pb' % flags.FLAGS.inference_model_path)
-            return None
         if(not os.path.isdir(dir_to_load_from)):
             print('Specified inference model dir %s does not exist' % flags.FLAGS.inference_model_path)
             return None
@@ -117,15 +116,24 @@ def load_inference_model():
         dir_to_load_from = os.path.abspath(os.path.join(model_storage_dirpath, model_storage_dirs[0]))
     
     print('File to load model from: %s' % dir_to_load_from)
-    return tf.keras.models.load_model(dir_to_load_from) 
+    with open(dir_to_load_from + '/labels.txt','r') as f:
+        for row in f:
+            if row.strip('\n'):
+                labels.append(row.strip('\n'))
+    return (tf.keras.models.load_model(dir_to_load_from), labels)
 
 def process_images(serial_number, image_queue):
     # Fetch the inference model
-    model = load_inference_model()
+    classifier, labels = load_inference_model()
 
-    if model is not None:
-        model.build((None, flags.FLAGS.inference_image_size, flags.FLAGS.inference_image_size, 3))
-        model.summary()
+    inference_image_height_width = flags.FLAGS.inference_image_size 
+    
+
+    if classifier is not None:
+        classifier.build((None, inference_image_height_width, inference_image_height_width, 3))
+        classifier.summary()
+        cv2.namedWindow(INFERENCE_DEBUG_WINDOW_NAME)
+        cv2.moveWindow(INFERENCE_DEBUG_WINDOW_NAME, 0, 0)
 
     # UI setup
     cv2.namedWindow(WINDOW_NAME)
@@ -133,13 +141,25 @@ def process_images(serial_number, image_queue):
     display_scale_factor = flags.FLAGS.display_scale_factor    
     
     while(1):
+        
         image = image_queue.get(block = True)
+        
         if image is None:
             break
+
         if len(image.shape) < 3:
             # convert the image from BayerRG8 to RGB8
             image = cv2.cvtColor(image, cv2.COLOR_BayerRG2RGB)
-        
+
+        if classifier is not None:
+            inference_image = cv2.resize(image, (inference_image_height_width, inference_image_height_width))
+            cv2.imshow(INFERENCE_DEBUG_WINDOW_NAME, inference_image)
+            inference_image = inference_image/255.0
+            result = classifier.predict(inference_image[np.newaxis, ...], verbose=True)
+            print(result)
+            predicted_class = np.argmax(result[0], axis=-1)
+            print("Class: %i, Label: %s ,Confidence: %.4f" % (predicted_class, labels[predicted_class] ,result[0][predicted_class]))            
+
         if display_scale_factor != 1:
             # reduce the image resolution
             image = cv2.resize(image, (0,0), fx=display_scale_factor, fy=display_scale_factor)
@@ -215,8 +235,9 @@ def acquire_images(cam, image_queue):
                 if image_result.IsIncomplete():
                     print('Image incomplete with image status %d ...' % image_result.GetImageStatus())
                 else:
-                    # Put a numpy array of the image data into the image queue 
-                    image_queue.put(image_result.GetNDArray())
+                    # If the process thead is ready, put a numpy array of the image data into the image queue 
+                    if image_queue.empty():
+                        image_queue.put(image_result.GetNDArray())
                     # Release image
                     image_result.Release()
 
