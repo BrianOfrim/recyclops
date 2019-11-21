@@ -1,4 +1,4 @@
-./cleam/recycle/
+./clean/recycle/
 ./clean/garbage/
 ./clean/verified/
 ./gather/recycle/
@@ -8,5 +8,3 @@
 ./train/verified/
 ./train/savedModels/
 ./train/verified/
-
-
