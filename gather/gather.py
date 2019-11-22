@@ -19,6 +19,7 @@ WINDOW_NAME = "Recyclops"
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 CATAGORY_DISPLAY_MILLISECONDS = 750
 NUM_BUFFERS = 3
+INFO_COLOR = (81, 237, 14)
 
 s3_client_upload = None
 
@@ -66,8 +67,8 @@ class ImageToSave:
     catagory_str: str
     image_data: np.ndarray
 
-recycle_catagory = Catagory('Recycle', 'recycle', (0, 255, 0), 'l')
-garbage_catagory = Catagory('Garbage', 'garbage', (0, 0, 255), 'a')
+recycle_catagory = Catagory('Recycle', 'recycle', (237, 181, 14), 'r')
+garbage_catagory = Catagory('Garbage', 'garbage', (14, 48, 237), 'g')
 
 catagories = [recycle_catagory, garbage_catagory]
 
@@ -257,14 +258,14 @@ def acquire_images(cam, image_queue):
         #  Begin acquiring images
         cam.BeginAcquisition()
 
-        print('Acquiring images. Press enter to end Acquisition.')
+        print('Acquiring images. Press esc to end Acquisition.')
 
         # Get device serial number for filename
         device_serial_number = cam.GetUniqueID()
         
         info_string = ''
         for catagory in catagories:
-            info_string += "%s:%s " % (catagory.display_name, catagory.keyboard_string)
+            info_string += "%s:'%s' " % (catagory.display_name, catagory.keyboard_string)
 
         # Retrieve, convert, and save images
         while(1):
@@ -298,7 +299,7 @@ def acquire_images(cam, image_queue):
 
                     displayArray = cv2.putText(displayArray,\
                                     info_string, (0,70), FONT, 3,\
-                                    (255, 0, 0), 3, cv2.LINE_AA)
+                                    INFO_COLOR, 3, cv2.LINE_AA)
                         
                     if flags.FLAGS.display_scale_factor != 1:
                         displayArray = cv2.resize(displayArray, (0,0), 
