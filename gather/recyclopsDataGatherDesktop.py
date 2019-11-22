@@ -17,7 +17,7 @@ from dataclasses import dataclass
 
 WINDOW_NAME = "Recyclops"
 FONT = cv2.FONT_HERSHEY_SIMPLEX
-CATAGORY_DISPLAY_MILLISECONDS = 1500
+CATAGORY_DISPLAY_MILLISECONDS = 750
 NUM_BUFFERS = 3
 
 s3_client_upload = None
