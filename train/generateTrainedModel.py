@@ -109,7 +109,7 @@ def run_training():
     
     print('Labels:')
     print(train_generator.class_indices)
-    
+    create_output_dir(flags.FLAGS.model_dir)    
     create_output_dir(saved_model_dir)
     
     with open(saved_model_dir + '/labels.txt', 'w') as f:

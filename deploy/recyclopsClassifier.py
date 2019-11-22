@@ -25,7 +25,7 @@ flags.DEFINE_float(
 )
 flags.DEFINE_bool(
     'mirror_display',
-    True,
+    False,
     'Mirror the images for display',
 )
 flags.DEFINE_string(
