@@ -3,6 +3,7 @@ import os.path
 from sys import exit
 import logging
 import time
+import shutil
 import re
 import numpy as np
 import cv2
@@ -13,9 +14,9 @@ from signal import signal, SIGINT
 
 WINDOW_NAME = "Recyclops"
 raw_bucket = 'recyclops'
-#clean_dir = 'verified'
-input_catagory_dir_list = ['recycle']
-output_catagory_dir_list = [ ('aluminum','t'), ('glass', 'y'), ('plastic','u'), ('paper','i'), ('compost', 'o'), ('invalid', 'p')]
+verified_file_dir = 'verified'
+input_catagory_dir_list = ['garbage']
+output_catagory_dir_list = [('trash','u'), ('compost', 'o'), ('invalid', 'p')]
 file_type = '.jpg'
 FONT_TYPE = cv2.FONT_HERSHEY_SIMPLEX
 FONT_COLOR_DISPLAY = (81, 237, 14)
@@ -50,8 +51,6 @@ def get_files_from_dir(bucket_name, dir_name, file_extension):
             files_from_dir.append(object_summary)
     return files_from_dir 
 
-   
-
 def upload_files(bucket, files_to_send):
     s3 = boto3.client('s3')
     for file_index, file_to_send in enumerate(files_to_send):
@@ -67,31 +66,36 @@ def download_files(object_summary_list):
     for object_index, object_summary in enumerate(object_summary_list):
         if(not os.path.isfile(object_summary.key)):
             try:
-                s3.download_file(object_summary.bucket_name, object_summary.key, object_summary.key)
+                s3.download_file(object_summary.bucket_name, object_summary.key, 
+                    object_summary.key)
             except botocore.exceptions.ClientError as e:
                 logging.error(e)
             logging.info('Downloading file from %s:%s, %i/%i' % \
-                (object_summary.bucket_name, object_summary.key, object_index + 1, len(object_summary_list)))
+                (object_summary.bucket_name, object_summary.key, object_index + 1, \
+                    len(object_summary_list)))
         else:
              logging.info('File already downloaded: %s:%s, %i/%i' % \
-                (object_summary.bucket_name, object_summary.key, object_index + 1, len(object_summary_list)))
+                (object_summary.bucket_name, object_summary.key, object_index + 1, \
+                    len(object_summary_list)))
 
-
-def get_current_verification_list(bucket_name, catagory):
-    files_from_dir = get_files_from_dir(bucket_name, catagory, ".txt")
+def get_current_verification_list(bucket_name, catagory, verification_dir):
+    files_from_dir = get_files_from_dir(bucket_name, catagory  + '/' +  verification_dir, ".txt")
     if len(files_from_dir) == 0: return None
     #find the most recent (highest timestamp)
-    sorted_files = sorted(files_from_dir, key = lambda summary: int(re.findall('[0-9]+', summary.key)[0]), reverse=True)
+    sorted_files = sorted(files_from_dir, key = lambda summary: int(re.findall('[0-9]+', \
+        summary.key)[0]), reverse=True)
     #download the most recent verification file
     download_files([sorted_files[0]])
     with open(sorted_files[0].key, "r") as f:
         return [line.strip() for line in f if line.strip()] 
     return None
     
-def upload_verification_file(bucket_name, catagory, upload_time, image_file_names):
-    if(len(image_file_names) == 0): return        
+def upload_verification_file(bucket_name, catagory, verification_dir, \
+        upload_time, image_file_names):
+    if(len(image_file_names) == 0): return
     # create a file containing the verified files
-    verification_file_name = '%s/%i-%s.txt' % (catagory, upload_time, catagory)
+    verification_file_name = '%s/%s/%i-%s.txt' % \
+        (catagory, verification_dir, upload_time, catagory)
     with open(verification_file_name, 'w') as f:
         for fn in image_file_names:
             f.write("%s\n" % fn) 
@@ -109,10 +113,8 @@ def create_output_dir(dir_name):
         else:
             print ("Successfully created the directory %s " % dir_name)
 
-
 def main():
-
-
+    
     signal(SIGINT, exit_handler)
     # Set up logging
     logging.basicConfig(level=logging.INFO,
@@ -129,16 +131,21 @@ def main():
     # Create the output dirctories
     for output_catagory_dir,_ in output_catagory_dir_list:
         create_output_dir(output_catagory_dir)
+        create_output_dir(output_catagory_dir + '/' + verified_file_dir)
 
     for input_catagory_dir in input_catagory_dir_list:
         create_output_dir(input_catagory_dir)
+        
 
     # Get the most recent verified file list
-    current_output_lists = dict((c, set()) for c, _ in output_catagory_dir_list)
+    original_output_lists = dict((c, set()) for c, _ in output_catagory_dir_list)
     for output_catagory_dir,_ in output_catagory_dir_list:
-        verification_list = get_current_verification_list(raw_bucket, output_catagory_dir)
+        verification_list = get_current_verification_list(raw_bucket, output_catagory_dir,\
+                                verified_file_dir)
         if(verification_list):
-            current_output_lists[output_catagory_dir] = set(verification_list)
+            original_output_lists[output_catagory_dir] = set(verification_list)
+
+    current_output_lists = dict((c, set()) for c, _ in output_catagory_dir_list)
 
     files_to_validate = dict((c, []) for c in input_catagory_dir_list)
 
@@ -147,9 +154,12 @@ def main():
         input_files = get_files_from_dir(raw_bucket, input_catagory_dir, file_type) 
         clean_files = set()
         for output_catagory_dir, _ in output_catagory_dir_list:
-            clean_files.update(current_output_lists[output_catagory_dir])
-        files_to_validate[input_catagory_dir].extend([inF for inF in input_files if inF.key not in clean_files])
-        logging.info('There are %i items to sort for type %s' % (len(files_to_validate[input_catagory_dir]), input_catagory_dir))
+            for output_file_name in original_output_lists[output_catagory_dir]: 
+                clean_files.add(output_file_name.split('/', 1)[1])
+        files_to_validate[input_catagory_dir].extend(\
+            [inF for inF in input_files if inF.key.split('/', 1)[1] not in clean_files])
+        logging.info('There are %i items to sort for type %s' % \
+            (len(files_to_validate[input_catagory_dir]), input_catagory_dir))
         download_files(list(files_to_validate[input_catagory_dir]))
 
     cv2.namedWindow(WINDOW_NAME)
@@ -170,7 +180,8 @@ def main():
             current_image = cv2.imread(files_to_validate[input_catagory_dir][file_index].key)
 
             display_image = np.copy(current_image)
-            display_image = cv2.putText(display_image, info_str, (0,30), FONT_TYPE, 0.7, FONT_COLOR_DISPLAY, 1, cv2.LINE_AA)
+            display_image = cv2.putText(display_image, info_str, (0,30), FONT_TYPE,\
+                 0.7, FONT_COLOR_DISPLAY, 1, cv2.LINE_AA)
 
             cv2.imshow(WINDOW_NAME, display_image)
             keypress = cv2.waitKey(0)
@@ -190,19 +201,23 @@ def main():
                 #skip
                 print("Skip")
                 for key in current_output_lists:
-                    current_output_lists[key].discard(files_to_validate[input_catagory_dir][file_index].key)
+                    current_output_lists[key].discard(\
+                        files_to_validate[input_catagory_dir][file_index].key)
                 file_index += 1
             for output_catagory_dir, catagory_char in output_catagory_dir_list:
                 if(keypress & 0xFF == ord(catagory_char)):
                     print("Sorted into: %s" % output_catagory_dir)
                     # add to the choosen list
-                    current_output_lists[output_catagory_dir].add(files_to_validate[input_catagory_dir][file_index].key)
+                    current_output_lists[output_catagory_dir].add(\
+                        files_to_validate[input_catagory_dir][file_index].key)
                     # discard from all other lists
                     for key in current_output_lists:
                         if(key != output_catagory_dir):
-                            current_output_lists[key].discard(files_to_validate[input_catagory_dir][file_index].key)
+                            current_output_lists[key].discard(\
+                                files_to_validate[input_catagory_dir][file_index].key)
                     catagory_image = np.copy(current_image) 
-                    catagory_image = cv2.putText(catagory_image, "%s:['%s']" % (output_catagory_dir, catagory_char) \
+                    catagory_image = cv2.putText(catagory_image, "%s:['%s']" % \
+                        (output_catagory_dir, catagory_char) \
                         , (0,30), FONT_TYPE, 0.7, FONT_COLOR_CATAGORY, 1, cv2.LINE_AA)
                     cv2.imshow(WINDOW_NAME, catagory_image)
                     cv2.waitKey(300)
@@ -213,9 +228,19 @@ def main():
 
     upload_time = time.time()
     
-    # print the results
-    for key in current_output_lists:
-        upload_verification_file(raw_bucket, key, upload_time, current_output_lists[key])
+    # print the result
+    for catagory_name in current_output_lists:
+        output_file_names = []
+        # copy files from input dir to output dir
+        for input_file_name in current_output_lists[catagory_name]:
+            output_file_name = catagory_name + '/' + input_file_name.split('/', 1)[1]
+            shutil.copyfile(input_file_name, output_file_name)
+            output_file_names.append(output_file_name)
+       
+        # upload new files 
+        upload_files(raw_bucket, output_file_names)
+        upload_verification_file(raw_bucket, catagory_name, verified_file_dir,\
+            upload_time, original_output_lists[catagory_name].union(set(output_file_names)))
 
 
     
