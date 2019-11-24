@@ -67,10 +67,16 @@ class ImageToSave:
     catagory_str: str
     image_data: np.ndarray
 
-recycle_catagory = Catagory('Recycle', 'recycle', (237, 181, 14), 'r')
-garbage_catagory = Catagory('Garbage', 'garbage', (14, 48, 237), 'g')
+aluminum_catagory = Catagory('Aluminum', 'aluminum', (237, 181, 14), '1')
+compost_catagory = Catagory('Compost', 'compost', (219, 56, 210), '2')
+glass_catagory = Catagory('Glass', 'glass', (255, 74, 164), '3')
+paper_catagory = Catagory('Paper', 'paper', (230, 245, 24), '4')
+plastic_catagory = Catagory('Plastic', 'plastic', (24, 230, 245), '5')
+trash_catagory = Catagory('Trash', 'trash', (24, 171, 245), '0')
 
-catagories = [recycle_catagory, garbage_catagory]
+
+catagories = [aluminum_catagory, compost_catagory, glass_catagory,\
+                paper_catagory, plastic_catagory, trash_catagory]
 
 def bucket_exists(bucket_name):
     """Determine whether bucket_name exists and the user has permission to access it
@@ -298,8 +304,8 @@ def acquire_images(cam, image_queue):
                          displayArray = cv2.flip(displayArray, flipCode = 1)
 
                     displayArray = cv2.putText(displayArray,\
-                                    info_string, (0,70), FONT, 3,\
-                                    INFO_COLOR, 3, cv2.LINE_AA)
+                                    info_string, (0,50), FONT, 2,\
+                                    INFO_COLOR, 2, cv2.LINE_AA)
                         
                     if flags.FLAGS.display_scale_factor != 1:
                         displayArray = cv2.resize(displayArray, (0,0), 
@@ -341,8 +347,8 @@ def acquire_images(cam, image_queue):
                              displayArray = cv2.flip(displayArray, flipCode=1)
 
                         displayArray = cv2.putText(displayArray,\
-                                    image_catagory.display_name , (0,70), FONT, 3,\
-                                    image_catagory.text_color, 3, cv2.LINE_AA)
+                                    image_catagory.display_name , (0,50), FONT, 2,\
+                                    image_catagory.text_color, 2, cv2.LINE_AA)
 
                         if flags.FLAGS.display_scale_factor != 1:
                             displayArray = cv2.resize(displayArray, (0,0), 
