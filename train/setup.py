@@ -5,11 +5,18 @@ import re
 import boto3
 import botocore
 from botocore.exceptions import ClientError
+from absl import app
+from absl import flags
 
 raw_bucket = 'recyclops'
-clean_dir = 'verified'
+verified_file_dir = 'verified'
 image_base_dir = "./images"
-catagory_dir_list = ['recycle', 'garbage']
+
+flags.DEFINE_spaceseplist(
+    'catagories_list',
+    'aluminum compost glass paper plastic trash',
+    'List of catagories to download images from',
+)
 
 def create_output_dir(dir_name):
     if(not os.path.isdir(dir_name) or not os.path.exists(dir_name)):
@@ -50,17 +57,6 @@ def get_files_from_dir(bucket_name, dir_name, file_extension):
             files_from_dir.append(object_summary)
     return files_from_dir 
 
-def get_current_verification_list(bucket_name, verified_list_dir, verification_type, catagory):
-    files_from_dir = get_files_from_dir(bucket_name, verified_list_dir + "/" + catagory +"/" +  verification_type, ".txt")
-    if len(files_from_dir) == 0: return None
-    #find the most recent (highest timestamp)
-    sorted_files = sorted(files_from_dir, key = lambda summary: int(re.findall('[0-9]+', summary.key)[0]), reverse=True)
-    #download the most recent verification file
-    download_files(bucket_name, [sorted_files[0].key])
-    with open(sorted_files[0].key, "r") as f:
-        return [line.strip() for line in f if line.strip()] 
-    return []
-
 def download_files(bucket_name, file_names, base_dir = '.'):
     s3 = boto3.client('s3')
     for object_index, object_name in enumerate(file_names):
@@ -75,8 +71,19 @@ def download_files(bucket_name, file_names, base_dir = '.'):
             logging.info('File already downloaded: %s:%s, %i/%i' % \
                 (bucket_name, object_name, object_index + 1, len(file_names)))
 
+def get_current_verification_list(bucket_name, catagory, verification_dir, base_dir = '.'):
+    files_from_dir = get_files_from_dir(bucket_name, catagory  + '/' +  verification_dir, ".txt")
+    if len(files_from_dir) == 0: return None
+    #find the most recent (highest timestamp)
+    sorted_files = sorted(files_from_dir, key = lambda summary: int(re.findall('[0-9]+', \
+        summary.key)[0]), reverse=True)
+    #download the most recent verification file
+    download_files(bucket_name, [sorted_files[0].key], base_dir)
+    with open(base_dir + '/' + sorted_files[0].key, "r") as f:
+        return [line.strip() for line in f if line.strip()] 
+    return None
 
-def main():
+def main(unused_argv):
     # Set up logging
     logging.basicConfig(level=logging.INFO,
                         format='%(levelname)s: %(asctime)s: %(message)s')
@@ -89,22 +96,29 @@ def main():
                      f'you do not have permission to access it.')
         return
 
+    catagory_dir_list = flags.FLAGS.catagories_list
+
+    if(len(catagory_dir_list) == 0):
+        print('No directories specified')
+        exit(0)
+
     # Create the classification directories
-    create_output_dir(clean_dir)
     create_output_dir(image_base_dir)
     for catagory_dir in catagory_dir_list:
         create_output_dir(image_base_dir + '/' + catagory_dir)
-        create_output_dir(clean_dir + '/' + catagory_dir)
-        create_output_dir(clean_dir + '/' + catagory_dir + '/valid')
+        create_output_dir(image_base_dir + '/' + catagory_dir + '/' + verified_file_dir)
+
 
     # Get the most recent verified file list
     verified_files = dict((c,  []) for c in catagory_dir_list)
     for catagory_dir in catagory_dir_list:
-        verified_files[catagory_dir] = get_current_verification_list(raw_bucket, clean_dir, "valid", catagory_dir)
+        verified_files[catagory_dir] = get_current_verification_list(raw_bucket,\
+            catagory_dir, verified_file_dir, image_base_dir)
     
     # Fetch the images
     for catagory_dir in catagory_dir_list:
         download_files(raw_bucket, verified_files[catagory_dir], image_base_dir)
 
-if __name__ == '__main__':
-    main()
+
+if __name__ == "__main__":
+  app.run(main)
