@@ -24,12 +24,12 @@ FONT_COLOR_CATAGORY = (237, 181, 14)
 
 flags.DEFINE_spaceseplist(
     'input_catagories_list',
-    '',
+    'aluminum compost glass paper plastic trash',
     'List of catoagories to clean files from',
 )
 flags.DEFINE_spaceseplist(
     'output_catagories_list',
-    '',
+    'aluminum compost glass paper plastic trash invalid',
     'List of catagories to add cleaned files to',
 )
 
