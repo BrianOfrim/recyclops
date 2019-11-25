@@ -1,10 +1,5 @@
-clean/recycle/
-clean/garbage/
-clean/verified/
-gather/recycle/
-gather/garbage/
 train/images/
 train/logs/
-train/verified/
 train/savedModels/
 train/verified/
+*.jpg
