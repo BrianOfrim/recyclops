@@ -234,15 +234,19 @@ def main(unused_argv):
             current_image = cv2.imread(files_to_validate[input_catagory_dir][file_index].key)
 
             display_image = np.copy(current_image)
+            # display input options
             display_image = cv2.putText(display_image, info_str, (0,30), FONT_TYPE,\
                  0.7, FONT_COLOR_DISPLAY, 1, cv2.LINE_AA)
+            display_image = cv2.putText(display_image, 'Current classification: %s' % input_catagory_dir, (0,60), FONT_TYPE,\
+                 0.7, FONT_COLOR_CATAGORY, 1, cv2.LINE_AA)
 
+            # display current clasification
             cv2.imshow(WINDOW_NAME, display_image)
             keypress = cv2.waitKey(0)
 
            # Get the user input
             if(keypress == 27):
-                # escape key pressed
+                # escape key pressed move to next catagory
                 break
             elif(keypress & 0xFF == ord('w')):
                 # return to previous
@@ -294,8 +298,9 @@ def main(unused_argv):
        
         # upload new files 
         upload_files(raw_bucket, output_file_names)
-        upload_verification_file(raw_bucket, catagory_name, verified_file_dir,\
-            upload_time, original_output_lists[catagory_name].union(set(output_file_names)))
+        if(len(output_file_names) != 0):
+            upload_verification_file(raw_bucket, catagory_name, verified_file_dir,\
+                upload_time, original_output_lists[catagory_name].union(set(output_file_names)))
 
 if __name__ == "__main__":
   app.run(main)
