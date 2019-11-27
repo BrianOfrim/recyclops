@@ -61,6 +61,11 @@ flags.DEFINE_string(
     './savedModels',
     'Base directory to save trined models',
 )
+flags.DEFINE_bool(
+    'use_multi_processing',
+    True,
+    'Use multi-processing for training',
+)
 
 def create_output_dir(dir_name):
     if(not os.path.isdir(dir_name) or not os.path.exists(dir_name)):
@@ -76,7 +81,13 @@ def create_output_dir(dir_name):
 
 def run_training():
     start_time = int(time.time())
-    
+   
+    # determine if gpu is being used
+    gpu_avail = tf.test.is_gpu_available(cuda_only=True)
+    cuda_build = tf.test.is_built_with_cuda()
+
+    print('GPU available: %r, Built with CUDA: %r' % (gpu_avail, cuda_build))
+
     saved_model_dir = flags.FLAGS.model_dir + '/' + str(start_time)
 
     initial_log_dir = flags.FLAGS.train_log_dir + '/' + str(start_time) + '/initial'
@@ -97,12 +108,14 @@ def run_training():
         flags.FLAGS.input_dir,
         target_size=(flags.FLAGS.image_size, flags.FLAGS.image_size),
         batch_size=flags.FLAGS.batch_size,
+        shuffle=True,
         subset='training')
 
     val_generator = datagen.flow_from_directory(
         flags.FLAGS.input_dir,
         target_size=(flags.FLAGS.image_size, flags.FLAGS.image_size),
-        batch_size=flags.FLAGS.batch_size, 
+        batch_size=flags.FLAGS.batch_size,
+        shuffle=True,
         subset='validation')
 
     labels = '\n'.join(sorted(train_generator.class_indices.keys()))
@@ -145,6 +158,9 @@ def run_training():
         steps_per_epoch=train_generator.samples//train_generator.batch_size,
         validation_data=val_generator,
         validation_steps=val_generator.samples//val_generator.batch_size,
+        use_multiprocessing=flags.FLAGS.use_multi_processing,
+        workers= 8 if flags.FLAGS.use_multi_processing else 1,
+        shuffle=True,
         callbacks=[callback_init])
 
     if not flags.FLAGS.fine_tune:
