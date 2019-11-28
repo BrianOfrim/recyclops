@@ -2,15 +2,18 @@
 
 An end to end application for classifying recycling using tensorflow 2
 
-A critical part of the recycling process is sorting recycleable into the correct
-categories. Incorrectly sorted or contaminated items cause huge losses to the 
-productivity of recycling processing facitities and huge losses in the amount
-of reycleable items that are actually recycled.
+A critical part of the recycling process is sorting recycleable items into the
+correct categories. Incorrectly sorted or contaminated items cause huge losses
+to the productivity of recycling processing facitities and huge losses in the 
+amount of reycleable items that are actually recycled.
 See: https://fivethirtyeight.com/features/the-era-of-easy-recycling-may-be-coming-to-an-end/
 
 This project aims to aid in the classification of recyclable items. There are 
-4 main parts to an image classification workflow: data gathering, data cleaning,
-neural network model training, and model deployment.  
+4 main parts to this image classification workflow: data gathering, data cleaning,
+neural network model training, and model deployment.
+
+The programs are intentionally fairly agnostic to the catagories so that the same methodologies
+and workflow can be applied to other image classification applications.
 
 ## Gather
 
