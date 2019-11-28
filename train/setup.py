@@ -2,6 +2,7 @@ import logging
 import os
 import os.path
 import re
+import shutil
 import boto3
 import botocore
 from botocore.exceptions import ClientError
@@ -10,7 +11,8 @@ from absl import flags
 
 raw_bucket = 'recyclops'
 verified_file_dir = 'verified'
-image_base_dir = "./images"
+image_base_dir = './images'
+saved_model_dir = 'savedModels'
 
 flags.DEFINE_spaceseplist(
     'catagories_list',
@@ -30,13 +32,11 @@ def create_output_dir(dir_name):
             print ("Successfully created the directory %s " % dir_name)
 
 
-
 def bucket_exists(bucket_name):
     """Determine whether bucket_name exists and the user has permission to access it
     :param bucket_name: string
     :return: True if the referenced bucket_name exists, otherwise False
     """
-
     s3 = boto3.client('s3')
     try:
         response = s3.head_bucket(Bucket=bucket_name)
@@ -72,16 +72,32 @@ def download_files(bucket_name, file_names, base_dir = '.'):
                 (bucket_name, object_name, object_index + 1, len(file_names)))
 
 def get_current_verification_list(bucket_name, catagory, verification_dir, base_dir = '.'):
-    files_from_dir = get_files_from_dir(bucket_name, catagory  + '/' +  verification_dir, ".txt")
+    files_from_dir = get_files_from_dir(bucket_name, catagory  + '/' +  verification_dir, '.txt')
     if len(files_from_dir) == 0: return None
     #find the most recent (highest timestamp)
     sorted_files = sorted(files_from_dir, key = lambda summary: int(re.findall('[0-9]+', \
         summary.key)[0]), reverse=True)
-    #download the most recent verification file
+    # download the most recent verification file
     download_files(bucket_name, [sorted_files[0].key], base_dir)
     with open(base_dir + '/' + sorted_files[0].key, "r") as f:
         return [line.strip() for line in f if line.strip()] 
     return None
+
+def get_most_resent_saved_model(bucket_name, base_dir = '.'):
+    files_from_dir = get_files_from_dir(bucket_name, saved_model_dir, '.zip')
+    if len(files_from_dir) == 0: return None
+    #find the most recent (highest timestamp)
+    sorted_files = sorted(files_from_dir, key = lambda summary: int(re.findall('[0-9]+', \
+        summary.key)[0]), reverse=True)
+    most_recent_file = sorted_files[0].key
+    if os.path.isdir(os.path.splitext(most_recent_file)[0]):
+        return None
+    # download the most recent saved model
+    download_files(bucket_name, [most_recent_file], base_dir)
+    shutil.unpack_archive(most_recent_file, extract_dir=os.path.splitext(most_recent_file)[0])
+    # clean up download dir
+    os.remove(most_recent_file)
+    return os.path.splitext(most_recent_file)[0]
 
 def main(unused_argv):
     # Set up logging
@@ -104,6 +120,7 @@ def main(unused_argv):
 
     # Create the classification directories
     create_output_dir(image_base_dir)
+    create_output_dir(saved_model_dir)
     for catagory_dir in catagory_dir_list:
         create_output_dir(image_base_dir + '/' + catagory_dir)
         create_output_dir(image_base_dir + '/' + catagory_dir + '/' + verified_file_dir)
@@ -119,6 +136,14 @@ def main(unused_argv):
     for catagory_dir in catagory_dir_list:
         download_files(raw_bucket, verified_files[catagory_dir], image_base_dir)
 
+    # Fetch the most recent model
+    print('Retriving the most recent saved model...')
+    most_recent_model_dir = get_most_resent_saved_model(raw_bucket)
+    if(most_recent_model_dir):
+        print('Most recent saved model saved at:')
+        print(most_recent_model_dir)
+    else:
+        print('No new saved models to download...')
 
 if __name__ == "__main__":
   app.run(main)

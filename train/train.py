@@ -61,12 +61,12 @@ flags.DEFINE_integer(
 )
 flags.DEFINE_string(
     'train_log_dir',
-    './logs/modGen',
+    'logs/modGen',
     'Base directory to log training and validation info to',
 )
 flags.DEFINE_string(
     'model_dir',
-    './savedModels',
+    'savedModels',
     'Base directory to save trined models',
 )
 flags.DEFINE_bool(
@@ -276,7 +276,7 @@ def main(unused_argv):
     if flags.FLAGS.send_to_cloud:
         # Zip contents of saved model dir and send to s3
         zip_file_name = shutil.make_archive(saved_model_dir, 'zip', saved_model_dir)
-        upload_files(s3_bucket_name, [zip_file_name])
+        upload_files(s3_bucket_name, ['%s.zip' % saved_model_dir])
         os.remove(zip_file_name)        
 
 if __name__ == "__main__":
