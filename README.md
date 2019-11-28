@@ -55,11 +55,11 @@ for this project, meaning that we will train the model with every combination of
 hyperparameters and compare the final validation accuracy for each set of 
 hyperparameters.
 For this project the hyperparamers that we are primarly interested in are:
-Training Batch Size (eg 4, 8, 16, 32)
-Dropout Rate (eg 0.0, 0.1, 0.2, 0.3, 0.4, 0.5)
-Optimizer (eg adam, RMSprop)
-Base Learning Rate (eg 0.0001, 0.00001)
-Fine Tuning (eg True, False)
+ * Training Batch Size (eg 4, 8, 16, 32)
+ * Dropout Rate (eg 0.0, 0.1, 0.2, 0.3, 0.4, 0.5)
+ * Optimizer (eg adam, RMSprop)
+ * Base Learning Rate (eg 0.0001, 0.00001)
+ * Fine Tuning (eg True, False)
 
 For each run (set of hyperparameters) we will log the training statistics
 (trainig accuracy/loss, validation accuracy/loss)
@@ -84,9 +84,9 @@ deploy. We will input the hyper parameters we with to use to train the model
 via command line flag arguments. We can also customize the traing run with other
 command line flag argumets such as the number of epochs, validation split etc.
 To see the full list of arguments use:
-'''
+```
 $ python3 train.py --help
-'''
+```
 The --help flag can be given to any of the scrips in this repo to get a list of
 all command line flag options.
 One the training scrip is completed the trained model will be zipped and uploaded
@@ -115,6 +115,6 @@ The /deploy/classifier.py script can be run once the latest trained model has be
 obtained with /train/setup.py
 This program will classify items into different catagories.
 There are command line options for this program that can be observed with:
-'''
+```
 $ python classifier.py --help
-'''
+```
