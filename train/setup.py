@@ -20,6 +20,12 @@ flags.DEFINE_spaceseplist(
     'List of catagories to download images from',
 )
 
+flags.DEFINE_bool(
+    'get_latest_model',
+    True,
+    'Get the latest saved model from s3',
+)
+
 def create_output_dir(dir_name):
     if(not os.path.isdir(dir_name) or not os.path.exists(dir_name)):
         print('Creating output directory: %s' % dir_name)
@@ -136,14 +142,15 @@ def main(unused_argv):
     for catagory_dir in catagory_dir_list:
         download_files(raw_bucket, verified_files[catagory_dir], image_base_dir)
 
-    # Fetch the most recent model
-    print('Retriving the most recent saved model...')
-    most_recent_model_dir = get_most_resent_saved_model(raw_bucket)
-    if(most_recent_model_dir):
-        print('Most recent saved model saved at:')
-        print(most_recent_model_dir)
-    else:
-        print('No new saved models to download...')
+    if flags.FLAGS.get_latest_model:
+        # Fetch the most recent model
+        print('Retriving the most recent saved model...')
+        most_recent_model_dir = get_most_resent_saved_model(raw_bucket)
+        if(most_recent_model_dir):
+            print('Most recent saved model saved at:')
+            print(most_recent_model_dir)
+        else:
+            print('No newer saved model to download...')
 
 if __name__ == "__main__":
   app.run(main)
