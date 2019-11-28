@@ -2,4 +2,6 @@ train/images/
 train/logs/
 train/savedModels/
 train/verified/
-*.jpg
+train/**/*.jpg
+gather/**/*.jpg
+clean/**/*.jpg
