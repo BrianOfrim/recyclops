@@ -3,7 +3,7 @@
 An end to end application for classifying recycling using tensorflow 2
 
 A critical part of the recycling process is sorting recycleable into the correct
-catagories. Incorrectly sorted or contaminated items cause huge losses to the 
+categories. Incorrectly sorted or contaminated items cause huge losses to the 
 productivity of recycling processing facitities and huge losses in the amount
 of reycleable items that are actually recycled.
 See: https://fivethirtyeight.com/features/the-era-of-easy-recycling-may-be-coming-to-an-end/
@@ -16,9 +16,9 @@ neural network model training, and model deployment.
 
 ![GatherScreenShot](https://raw.githubusercontent.com/BrianOfrim/recyclops/master/doc/assets/gatherSample_480.jpg)
 
-Using the program /gather/gather.py catagories for image classification are 
-overlaid on a live image stream. Click one of the catagagories to classify
-the current live stream image and have it sent to s3 storage.
+The program /gather/gather.py will overlay the categories for image classification
+on the live camera image stream. Enter the key for one of the category options to 
+classify the current live stream image and have it sent to s3 storage.
 
 ## Clean
 ![CleanScreenShot](https://raw.githubusercontent.com/BrianOfrim/recyclops/master/doc/assets/cleanSample_480.jpg)
@@ -26,11 +26,11 @@ the current live stream image and have it sent to s3 storage.
 The accuracy of the image classification model is dependant upon the accuracy
 of the training data so before using the gathered data for training we need to 
 verify the accuracy of the images. To do this we will use /clean/clean.py
-The image catagory options will be overlaid on the image along with the catagory
+The image category options will be overlaid on the image along with the category
 is was assigned at the gathering stage. Press the corresponding character key to
 classify the image. Press 's' to skip the current image, press 'w' to return to
 a previous image. Note, that going to the previous image with 'w' will remove 
-the "clean" catagory given to the current image and it must be re-classified 
+the "clean" category given to the current image and it must be re-classified 
 when the image is returned to.
 
 Images to be cleaned are downloaded from s3. After cleaning the list of verified
@@ -42,7 +42,7 @@ stage are uploaded to the correct s3 location.
 ### Setup
 To obtain the classified images that will be used for training the 
 /train/setup.py program will be used. This downloads the most recent version of
-the verification list from s3 for each catagory and enures that all verified 
+the verification list from s3 for each category and enures that all verified 
 images are download prior to training. The /train/setup.py will also download
 the newest trained model that was uploaded to s3 by a previous run of the
 /train/train.py program which will be described later.
@@ -71,7 +71,7 @@ For the base model we will use MobileNetV2 pretrained on imagenet. We will
 exclude the top layer of the network and add our own global pooling and 
 classification layers on top. We will take advantage of the pretrained network's
 feature extraction vector layer by freezing the headless base model. We will then
-train the layers we added in order to classify images into our catagories. When 
+train the layers we added in order to classify images into our categories. When 
 the hyperparameter "Fine Tuning" is True, after we have finished the initial 
 training of the added classification layers we will reduce the learning rate 
 by 10x, unfreeze part of the initial pretrained network and preform fine tuning 
@@ -113,7 +113,7 @@ accuracy/loss will be logged in a format that makes it viewable with tensorboard
 
 The /deploy/classifier.py script can be run once the latest trained model has been
 obtained with /train/setup.py
-This program will classify items into different catagories.
+This program will classify items into different categories.
 There are command line options for this program that can be observed with:
 ```
 $ python classifier.py --help
