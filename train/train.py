@@ -1,9 +1,17 @@
+import os
 import os.path
+import sys
 import time
+import shutil
+import threading
 from absl import app
 from absl import flags
 import numpy as np
 import tensorflow as tf
+import boto3
+from botocore.exceptions import ClientError
+
+s3_bucket_name = 'recyclops'
 
 flags.DEFINE_string(
     'input_dir',
@@ -66,6 +74,55 @@ flags.DEFINE_bool(
     True,
     'Use multi-processing for training',
 )
+flags.DEFINE_bool(
+    'send_to_cloud',
+    True,
+    'Send the saved model to S3 storage',
+)
+
+class ProgressPercentage(object):
+
+    def __init__(self, filename):
+        self._filename = filename
+        self._size = float(os.path.getsize(filename))
+        self._seen_so_far = 0
+        self._lock = threading.Lock()
+
+    def __call__(self, bytes_amount):
+        # To simplify, assume this is hooked up to a single filename
+        with self._lock:
+            self._seen_so_far += bytes_amount
+            percentage = (self._seen_so_far / self._size) * 100
+            sys.stdout.write(
+                "\r%s  %s / %s  (%.2f%%)" % (
+                    self._filename, self._seen_so_far, self._size,
+                    percentage))
+            sys.stdout.flush()
+
+def bucket_exists(bucket_name):
+    """Determine whether bucket_name exists and the user has permission to access it
+    :param bucket_name: string
+    :return: True if the referenced bucket_name exists, otherwise False
+    """
+    s3 = boto3.client('s3')
+    try:
+        response = s3.head_bucket(Bucket=bucket_name)
+    except ClientError as e:
+        logging.debug(e)
+        return False
+    return True
+
+def upload_files(bucket, files_to_send):
+    s3 = boto3.client('s3')
+    for file_index, file_to_send in enumerate(files_to_send):
+        print("Uploading file to %s:%s, %i/%i" % \
+            (bucket, file_to_send, file_index + 1, len(files_to_send)))
+        try:
+            s3.upload_file(file_to_send, bucket, file_to_send,\
+                Callback=ProgressPercentage(file_to_send))
+        except ClientError as e:
+            print(e)
+        print()
 
 def create_output_dir(dir_name):
     if(not os.path.isdir(dir_name) or not os.path.exists(dir_name)):
@@ -165,7 +222,7 @@ def run_training():
 
     if not flags.FLAGS.fine_tune:
         model.save(saved_model_dir)
-        return
+        return saved_model_dir
 
     base_model.trainable = True
     fine_tune_at = 100
@@ -202,15 +259,25 @@ def run_training():
         callbacks=[callback_ft])
 
     model.save(saved_model_dir)
-
-def print_flags():
-    print('Generating a trained model using the following parameters:')
-    for key, value in flags.FLAGS.__flags.items():
-        print(key, ': ', value)
+    return saved_model_dir
 
 def main(unused_argv):
-    #print_flags()
-    run_training()
+    
+    if flags.FLAGS.send_to_cloud:
+        # Check if the s3 bucket exists
+        if bucket_exists(s3_bucket_name):
+            print('%s exists and you have permission to access it.' % s3_bucket_name)
+        else:
+            print('%s does not exist or you do not have permission to access it.' \
+                    % s3_bucket_name)
+            sys.exit(0)
+
+    saved_model_dir = run_training()
+    if flags.FLAGS.send_to_cloud:
+        # Zip contents of saved model dir and send to s3
+        zip_file_name = shutil.make_archive(saved_model_dir, 'zip', saved_model_dir)
+        upload_files(s3_bucket_name, [zip_file_name])
+        os.remove(zip_file_name)        
 
 if __name__ == "__main__":
   app.run(main)
