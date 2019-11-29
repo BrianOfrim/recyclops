@@ -17,7 +17,7 @@ from dataclasses import dataclass
 
 WINDOW_NAME = "Recyclops"
 FONT = cv2.FONT_HERSHEY_SIMPLEX
-CATAGORY_DISPLAY_MILLISECONDS = 750
+CATEGORY_DISPLAY_MILLISECONDS = 750
 NUM_BUFFERS = 3
 INFO_COLOR = (81, 237, 14)
 
@@ -55,7 +55,7 @@ flags.DEFINE_bool(
 )
 
 @dataclass
-class Catagory:
+class Category:
     display_name: str
     data_name: str
     text_color: tuple
@@ -64,19 +64,19 @@ class Catagory:
 @dataclass
 class ImageToSave:
     filename: str
-    catagory_str: str
+    category_str: str
     image_data: np.ndarray
 
-aluminum_catagory = Catagory('Aluminum', 'aluminum', (237, 181, 14), '1')
-compost_catagory = Catagory('Compost', 'compost', (219, 56, 210), '2')
-glass_catagory = Catagory('Glass', 'glass', (255, 74, 164), '3')
-paper_catagory = Catagory('Paper', 'paper', (230, 245, 24), '4')
-plastic_catagory = Catagory('Plastic', 'plastic', (24, 230, 245), '5')
-trash_catagory = Catagory('Trash', 'trash', (24, 171, 245), '0')
+aluminum_category = Category('Aluminum', 'aluminum', (237, 181, 14), '1')
+compost_category = Category('Compost', 'compost', (219, 56, 210), '2')
+glass_category = Category('Glass', 'glass', (255, 74, 164), '3')
+paper_category = Category('Paper', 'paper', (230, 245, 24), '4')
+plastic_category = Category('Plastic', 'plastic', (24, 230, 245), '5')
+trash_category = Category('Trash', 'trash', (24, 171, 245), '0')
 
 
-catagories = [aluminum_catagory, compost_catagory, glass_catagory,\
-                paper_catagory, plastic_catagory, trash_catagory]
+categories = [aluminum_category, compost_category, glass_category,\
+                paper_category, plastic_category, trash_category]
 
 def bucket_exists(bucket_name):
     """Determine whether bucket_name exists and the user has permission to access it
@@ -214,7 +214,7 @@ def process_images(serial_number, image_queue):
         image_to_save = image_queue.get(block = True)
         if image_to_save == None:
             break
-        filepath = image_to_save.catagory_str + '/' + image_to_save.filename
+        filepath = image_to_save.category_str + '/' + image_to_save.filename
         print('Image saved at path: %s'% filepath)
         cv2.imwrite(filepath, image_to_save.image_data)
         if flags.FLAGS.send_to_cloud:
@@ -270,8 +270,8 @@ def acquire_images(cam, image_queue):
         device_serial_number = cam.GetUniqueID()
         
         info_string = ''
-        for catagory in catagories:
-            info_string += "%s:'%s' " % (catagory.display_name, catagory.keyboard_string)
+        for category in categories:
+            info_string += "%s:'%s' " % (category.display_name, category.keyboard_string)
 
         # Retrieve, convert, and save images
         while(1):
@@ -319,15 +319,15 @@ def acquire_images(cam, image_queue):
                         # escape key pressed
                         break
 
-                    image_catagory = None
+                    image_category = None
 
-                    for catagory in catagories:
-                        if(keypress & 0xFF == ord(catagory.keyboard_string)):
-                            image_catagory = catagory
+                    for category in categories:
+                        if(keypress & 0xFF == ord(category.keyboard_string)):
+                            image_category = category
 
-                    if(image_catagory != None):
+                    if(image_category != None):
                         # Create a unique filename
-                        filename = '%s-%d.%s' % (image_catagory.data_name,
+                        filename = '%s-%d.%s' % (image_category.data_name,
                                 image_result.GetTimeStamp(), flags.FLAGS.image_file_type)
                         print('Filename: %s, height :%d, width :%d' % 
                                 (filename, imageArray.shape[0], imageArray.shape[1]))
@@ -339,7 +339,7 @@ def acquire_images(cam, image_queue):
                                 fx=flags.FLAGS.save_scale_factor,
                                 fy=flags.FLAGS.save_scale_factor)
 
-                        image_queue.put(ImageToSave(filename, image_catagory.data_name, saveArray))
+                        image_queue.put(ImageToSave(filename, image_category.data_name, saveArray))
 
                         displayArray = np.copy(imageArray)
 
@@ -347,8 +347,8 @@ def acquire_images(cam, image_queue):
                              displayArray = cv2.flip(displayArray, flipCode=1)
 
                         displayArray = cv2.putText(displayArray,\
-                                    image_catagory.display_name , (0,50), FONT, 2,\
-                                    image_catagory.text_color, 2, cv2.LINE_AA)
+                                    image_category.display_name , (0,50), FONT, 2,\
+                                    image_category.text_color, 2, cv2.LINE_AA)
 
                         if flags.FLAGS.display_scale_factor != 1:
                             displayArray = cv2.resize(displayArray, (0,0), 
@@ -356,7 +356,7 @@ def acquire_images(cam, image_queue):
                                 fy=flags.FLAGS.display_scale_factor)
                         
                         cv2.imshow(WINDOW_NAME, displayArray)
-                        cv2.waitKey(CATAGORY_DISPLAY_MILLISECONDS)
+                        cv2.waitKey(CATEGORY_DISPLAY_MILLISECONDS)
                         
                     # Release image
                     image_result.Release()
@@ -427,16 +427,16 @@ def main(unused_argv):
     system = PySpin.System.GetInstance()
     
     # create the output dirctories
-    for catagory in catagories:
-        if(not isdir(catagory.data_name) or not exists(catagory.data_name)):
-            print('Creating output directory: %s' % catagory.data_name)
+    for category in categories:
+        if(not isdir(category.data_name) or not exists(category.data_name)):
+            print('Creating output directory: %s' % category.data_name)
             try:
-                mkdir(catagory.data_name)
+                mkdir(category.data_name)
             except OSError:
-                print ("Creation of the directory %s failed" % catagory.data_name)
+                print ("Creation of the directory %s failed" % category.data_name)
                 return
             else:
-                print ("Successfully created the directory %s " % catagory.data_name)
+                print ("Successfully created the directory %s " % category.data_name)
     
     if flags.FLAGS.send_to_cloud:
         # Check if the bucket exists

@@ -15,9 +15,9 @@ image_base_dir = './images'
 saved_model_dir = 'savedModels'
 
 flags.DEFINE_spaceseplist(
-    'catagories_list',
+    'categories_list',
     'aluminum compost glass paper plastic trash',
-    'List of catagories to download images from',
+    'List of categories to download images from',
 )
 
 flags.DEFINE_bool(
@@ -77,8 +77,8 @@ def download_files(bucket_name, file_names, base_dir = '.'):
             logging.info('File already downloaded: %s:%s, %i/%i' % \
                 (bucket_name, object_name, object_index + 1, len(file_names)))
 
-def get_current_verification_list(bucket_name, catagory, verification_dir, base_dir = '.'):
-    files_from_dir = get_files_from_dir(bucket_name, catagory  + '/' +  verification_dir, '.txt')
+def get_current_verification_list(bucket_name, category, verification_dir, base_dir = '.'):
+    files_from_dir = get_files_from_dir(bucket_name, category  + '/' +  verification_dir, '.txt')
     if len(files_from_dir) == 0: return None
     #find the most recent (highest timestamp)
     sorted_files = sorted(files_from_dir, key = lambda summary: int(re.findall('[0-9]+', \
@@ -118,29 +118,29 @@ def main(unused_argv):
                      f'you do not have permission to access it.')
         return
 
-    catagory_dir_list = flags.FLAGS.catagories_list
+    category_dir_list = flags.FLAGS.categories_list
 
-    if(len(catagory_dir_list) == 0):
+    if(len(category_dir_list) == 0):
         print('No directories specified')
         exit(0)
 
     # Create the classification directories
     create_output_dir(image_base_dir)
     create_output_dir(saved_model_dir)
-    for catagory_dir in catagory_dir_list:
-        create_output_dir(image_base_dir + '/' + catagory_dir)
-        create_output_dir(image_base_dir + '/' + catagory_dir + '/' + verified_file_dir)
+    for category_dir in category_dir_list:
+        create_output_dir(image_base_dir + '/' + category_dir)
+        create_output_dir(image_base_dir + '/' + category_dir + '/' + verified_file_dir)
 
 
     # Get the most recent verified file list
-    verified_files = dict((c,  []) for c in catagory_dir_list)
-    for catagory_dir in catagory_dir_list:
-        verified_files[catagory_dir] = get_current_verification_list(raw_bucket,\
-            catagory_dir, verified_file_dir, image_base_dir)
+    verified_files = dict((c,  []) for c in category_dir_list)
+    for category_dir in category_dir_list:
+        verified_files[category_dir] = get_current_verification_list(raw_bucket,\
+            category_dir, verified_file_dir, image_base_dir)
     
     # Fetch the images
-    for catagory_dir in catagory_dir_list:
-        download_files(raw_bucket, verified_files[catagory_dir], image_base_dir)
+    for category_dir in category_dir_list:
+        download_files(raw_bucket, verified_files[category_dir], image_base_dir)
 
     if flags.FLAGS.get_latest_model:
         # Fetch the most recent model

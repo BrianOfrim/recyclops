@@ -10,14 +10,14 @@ import itertools as it
 IMAGE_SIZE = 224
 BATCH_SIZE = 32
 VAL_SPLIT = 0.2
-NUM_INITIAL_EPOCHS = 15
+NUM_INITIAL_EPOCHS = 10
 NUM_FINE_TUNE_EPOCHS = 10
 
 HP_BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([ 4, 8]))
 HP_DROPOUT = hp.HParam('dropout', hp.Discrete([0.0, 0.15, 0.25]))
-HP_OPTIMIZER = hp.HParam('optimizer', hp.Discrete(['adam','RMSprop']))
+HP_OPTIMIZER = hp.HParam('optimizer', hp.Discrete(['RMSprop']))
 HP_BASE_LEARNING_RATE = hp.HParam('base_learning_rate', hp.Discrete([0.0001, 0.00001]))
-HP_FINE_TUNE = hp.HParam('do_fine_tune', hp.Discrete([False]))
+HP_FINE_TUNE = hp.HParam('do_fine_tune', hp.Discrete([False, True]))
 
 HPARAMS = [
     HP_BATCH_SIZE,
@@ -124,7 +124,7 @@ def train_test_model(run_dir, hparams):
         callbacks=[callback_init, hparams_callback_init])
 
 
-    return # do not run fine tuning
+    # return # do not run fine tuning
 
     hparams[HP_FINE_TUNE] = True
 
