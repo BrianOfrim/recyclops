@@ -222,7 +222,7 @@ def main(unused_argv):
 
     info_str = ''
     for dir_index, output_category_dir in enumerate(output_category_dir_list):
-        info_str += "%s:['%i'] " % (output_category_dir, dir_index)
+        info_str += "%s:['%i'] " % (output_category_dir, dir_index + 1)
  
     # Show the data to the user
     for input_category_dir in input_category_dir_list:
@@ -263,7 +263,7 @@ def main(unused_argv):
                         files_to_validate[input_category_dir][file_index].key)
                 file_index += 1
             for dir_index, output_category_dir in enumerate(output_category_dir_list):
-                if(keypress & 0xFF == ord(str(dir_index))):
+                if(keypress & 0xFF == ord(str(dir_index + 1))):
                     print("Sorted into: %s" % output_category_dir)
                     # add to the choosen list
                     current_output_lists[output_category_dir].add(\
@@ -275,7 +275,7 @@ def main(unused_argv):
                                 files_to_validate[input_category_dir][file_index].key)
                     category_image = np.copy(current_image) 
                     category_image = cv2.putText(category_image, "%s:['%i']" % \
-                        (output_category_dir, dir_index) \
+                        (output_category_dir, dir_index + 1) \
                         , (0,30), FONT_TYPE, 0.7, FONT_COLOR_CATEGORY, 1, cv2.LINE_AA)
                     cv2.imshow(WINDOW_NAME, category_image)
                     cv2.waitKey(300)
