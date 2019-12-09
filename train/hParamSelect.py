@@ -10,8 +10,8 @@ import itertools as it
 
 IMAGE_SIZE = 224
 VAL_SPLIT = 0.2
-NUM_INITIAL_EPOCHS = 1
-NUM_FINE_TUNE_EPOCHS = 25
+NUM_INITIAL_EPOCHS = 25
+NUM_FINE_TUNE_EPOCHS = 10
 
 
 HPSet = collections.namedtuple('HPSet', ['batch_size','dropout','optimizer', 'base_learning_rate','fine_tune'])
