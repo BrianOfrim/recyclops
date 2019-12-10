@@ -1,0 +1,7 @@
+tensorflow
+boto3
+absl
+cv2
+numpy
+matplotlib
+scipy
