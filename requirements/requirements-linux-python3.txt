@@ -1,7 +1,7 @@
 tensorflow
 boto3
-absl
-cv2
+absl-py
+opencv-python
 numpy
 matplotlib
 scipy
