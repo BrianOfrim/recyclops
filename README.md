@@ -64,7 +64,7 @@ For this project the hyperparameters that we are primarly interested in are:
  * Base Learning Rate (e.g. 0.0001, 0.00001)
  * Fine Tuning (e.g. True, False)
  
-For this application a good set of hyper parameters were determined to be:
+For this application a good set of hyper parameters were determined to be:  
 **Batch size: 4, Dropout: 0.25, Optimizer: RMSprop, Learning rate: 0.00001
 With the number of epochs set to 35.**
 
