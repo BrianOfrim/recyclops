@@ -1,0 +1,7 @@
+1576088289
+batch_size	dropout	optimizer	base_learning_rate	do_file_tune	acc(Val)	loss(val)	acc(train)	loss(train)
+8		0.45	adam		0.00001			False		0.72		0.89		0.99		0.03		
+8		0.45	RMSprop		0.00001			False		0.75		1		0.99		0.03
+4		0	adam		0.00001			False		0.75		1		0.98		0.05
+8		0.25	RMSprop		0.00001			False		0.73		1.2		0.99		0.02
+4		0.25	RMSprop		0.00001			False		0.78		0.81		0.98		0.07

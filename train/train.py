@@ -108,7 +108,7 @@ def bucket_exists(bucket_name):
     try:
         response = s3.head_bucket(Bucket=bucket_name)
     except ClientError as e:
-        logging.debug(e)
+        print(e)
         return False
     return True
 

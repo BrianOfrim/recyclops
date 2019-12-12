@@ -10,32 +10,29 @@ import itertools as it
 
 IMAGE_SIZE = 224
 VAL_SPLIT = 0.2
-NUM_INITIAL_EPOCHS = 25
+NUM_INITIAL_EPOCHS = 100
 NUM_FINE_TUNE_EPOCHS = 10
 
 
 HPSet = collections.namedtuple('HPSet', ['batch_size','dropout','optimizer', 'base_learning_rate','fine_tune'])
 
 hpvals = [
-    HPSet(4, 0.45, 'adam', 0.0001, False),
-    HPSet(8, 0, 'adam', 0.0001, False),
     HPSet(8, 0.45, 'adam', 0.00001, False),
-    HPSet(8, 0.25, 'adam', 0.0001, False),
-    HPSet(32, 0, 'adam', 0.0001, False),
+#    HPSet(8, 0.25, 'adam', 0.0001, False),
+#    HPSet(32, 0, 'adam', 0.0001, False),
     HPSet(8, 0.45, 'RMSprop', 0.00001, False),
     HPSet(4, 0, 'adam', 0.00001, False),
-    HPSet(16, 0.25, 'adam', 0.00001, False),
+#    HPSet(16, 0.25, 'adam', 0.00001, False),
     HPSet(8, 0.25, 'RMSprop', 0.00001, False),
-    HPSet(16, 0, 'adam', 0.0001, False),
     HPSet(4, 0.25, 'RMSprop', 0.00001, False),
-    HPSet(32, 0.45, 'adam', 0.0001, False)
+#    HPSet(32, 0.45, 'adam', 0.0001, False)
 ]
 
-HP_BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([4]))
-HP_DROPOUT = hp.HParam('dropout', hp.Discrete([0.0]))
-HP_OPTIMIZER = hp.HParam('optimizer', hp.Discrete(['adam']))
-HP_BASE_LEARNING_RATE = hp.HParam('base_learning_rate', hp.Discrete(['0.0001']))
-HP_FINE_TUNE = hp.HParam('do_fine_tune', hp.Discrete([False]))
+HP_BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([2,4,8,16,32]))
+HP_DROPOUT = hp.HParam('dropout', hp.Discrete([0.0, 0.25, 0.45]))
+HP_OPTIMIZER = hp.HParam('optimizer', hp.Discrete(['adam', 'RMSprop']))
+HP_BASE_LEARNING_RATE = hp.HParam('base_learning_rate', hp.Discrete(['0.0001', '0.00001']))
+HP_FINE_TUNE = hp.HParam('do_fine_tune', hp.Discrete([True, False]))
 
 
 HPARAMS = [
